@@ -123,32 +123,50 @@ The searchable Bible content is based on SQL databases originally published by [
 ## Roadmap & Potential Contributions
 
 ### Search Capabilities
-- [x] Add pagination for search results
-- [ ] Include search within verse ranges (e.g., John 3:16–21)
-- [ ] Include fuzzy matching or stemming (e.g., "loves" → "love")
-- [x] Include natural language search (e.g., "verses about forgiveness")
-- [x] Track recent or most common searches
+- [x] Pagination for search results
+- [x] Natural language search (e.g., "verses about forgiveness")
+- [x] Logical grouping with parentheses in search syntax
 - [x] Subdivide books by genre (Law, Gospels, etc.)
-- [x] Enable logical grouping and parentheses in search syntax
+- [x] Track recent searches
+- [ ] Search within verse ranges (e.g., John 3:16–21)
+- [ ] Fuzzy matching or stemming (e.g., "loves" → "love")
+- [ ] Cross-reference lookup (show related verses)
+- [ ] Search by Strong's numbers for original language study
+
+### AI Features
+- [x] One-click theological explanations for any verse
+- [x] Full chapter context reader
+- [ ] Comparative analysis across translations
+- [ ] AI-generated study notes
+- [ ] Topic-based verse recommendations
 
 ### User Features
-- [ ] Add optional user accounts with saved history
-- [ ] Allow bookmarking/saving of favorite verses (via local storage or user accounts)
-- [x] Provide user manual
+- [x] Bookmarking/saving favorite verses (via local storage)
+- [x] User guide and help modal
+- [ ] Optional user accounts with cloud sync
+- [ ] Export saved verses (PDF, text, clipboard)
+- [ ] Share verses via link or social media
+- [ ] Audio playback of verses (text-to-speech)
 
 ### Accessibility & Internationalization
-- [ ] Support multi-language display (e.g., Spanish, Hindi, Malayalam)
-- [ ] Enable keyboard-only navigation mode
-- [ ] Support copyrighted Bible versions (NIV, NLT, BSI, etc.)
+- [ ] Multi-language UI (Spanish, Hindi, Malayalam, etc.)
+- [ ] Keyboard-only navigation mode
+- [ ] Screen reader optimization
+- [ ] Support copyrighted versions (NIV, NLT, etc.) with permission
 
-### Developer Integrations
-- [ ] Provide API access for other apps/church tools to integrate Bible search
+### Developer & API
+- [ ] REST API for external integrations
+- [ ] Embeddable widget for church websites
+- [ ] Webhook support for automation
 
 ### UI/UX Enhancements
-- [x] Add loading animations or skeletons on long queries
-- [x] Make the UI fully responsive for mobile screens
-- [x] Move controls into a collapsible sidebar
-- [x] Improve styling with more theme options
+- [x] Loading animations and skeletons
+- [x] Fully responsive mobile design
+- [x] Collapsible sidebar with filters
+- [x] Light and dark themes
+- [x] Smart section toggles (Select All / Deselect All / Only)
+- [ ] Customizable color themes
+- [ ] Reading mode (distraction-free full-screen)
 
 ## License
 
