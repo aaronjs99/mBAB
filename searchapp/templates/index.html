@@ -427,6 +427,9 @@
            if (btn.classList.contains("selected")) bookBits[idx] = 1;
          });
 
+         // Refresh section toggle texts based on initial book state
+         refreshSectionTexts();
+
          // Restore URL Params
          restoreFromURL();
 
@@ -708,7 +711,7 @@
               const allSelected = ids.every(id => bookBits[bookIdToIndex[id]] === 1);
               const textSpan = el.querySelector('.section-toggle-text');
               if (textSpan) {
-                  textSpan.textContent = allSelected ? 'Unselect All' : 'Select All';
+                  textSpan.textContent = allSelected ? 'Deselect All' : 'Select All';
               }
           });
       };
