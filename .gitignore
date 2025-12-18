@@ -187,3 +187,9 @@ models/
 *.gguf
 ollama.log
 server.log
+
+# Large models and binaries
+models/
+*.gguf
+*.tgz
+
