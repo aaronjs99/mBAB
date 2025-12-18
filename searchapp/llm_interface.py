@@ -47,16 +47,17 @@ def get_llm_client():
             pass
 
     # 2. Cloud Fallbacks
-    # DeepSeek (Preferred Cloud)
+    # Groq (Preferred Cloud - fast and free tier)
+    if Groq and getattr(settings, 'GROQ_API_KEY', ''):
+        return Groq(api_key=settings.GROQ_API_KEY), "groq"
+
+    # DeepSeek (Secondary Cloud)
     deepseek_key = getattr(settings, 'DEEPSEEK_API_KEY', '')
     if OpenAI and deepseek_key:
         return OpenAI(
             api_key=deepseek_key, 
             base_url="https://api.deepseek.com"
         ), "deepseek"
-
-    if Groq and getattr(settings, 'GROQ_API_KEY', ''):
-        return Groq(api_key=settings.GROQ_API_KEY), "groq"
     
     if OpenAI and getattr(settings, 'OPENAI_API_KEY', ''):
         return OpenAI(api_key=settings.OPENAI_API_KEY), "openai"
