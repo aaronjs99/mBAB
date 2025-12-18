@@ -178,3 +178,18 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Local Environment & Binaries
+*.tgz
+*.tar.gz
+bin/
+models/
+*.gguf
+ollama.log
+server.log
+
+# Large models and binaries
+models/
+*.gguf
+*.tgz
+

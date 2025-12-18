@@ -3,3 +3,5 @@ gunicorn
 whitenoise
 black
 db-sqlite3
+openai
+groq

@@ -175,3 +175,76 @@ books = [
 
 sql_select = "SELECT * FROM bible WHERE "
 sql_order = "ORDER BY Book, Chapter, Versecount"
+
+import re
+
+def parse_verse_reference(query):
+    """
+    Parse a query string to see if it matches a verse reference pattern.
+    Supports:
+      - Book Chapter:Verse (e.g., "John 3:16")
+      - Book Chapter:Verse-Verse (e.g., "John 3:16-21")
+      - Book Chapter (e.g., "John 3") -> Returns all verses in chapter
+    
+    Returns:
+        None if no match.
+        Dict with keys: book_id, chapter, start_verse, end_verse (optional)
+    """
+    # Normalize query: remove extra spaces
+    query = query.strip()
+    
+    # Regex for "Book Chapter:Verse[-Verse]" or "Book Chapter"
+    # We need to handle book names with spaces (e.g. "1 John")
+    # Strategy: Try to match the end of the string first for the numbers
+    
+    # Pattern 1: Chapter:Verse-Verse or Chapter:Verse
+    # Group 1: Book Name
+    # Group 2: Chapter
+    # Group 3: Start Verse
+    # Group 4: End Verse (optional)
+    match = re.search(r"^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$", query)
+    
+    if match:
+        book_name = match.group(1).strip()
+        chapter = int(match.group(2))
+        start_verse = int(match.group(3))
+        end_verse = int(match.group(4)) if match.group(4) else start_verse
+        
+        book_id = get_book_id(book_name)
+        if book_id is not None:
+            return {
+                "book_id": book_id,
+                "chapter": chapter,
+                "start_verse": start_verse,
+                "end_verse": end_verse
+            }
+
+    # Pattern 2: Chapter only (e.g. "John 3")
+    match = re.search(r"^(.+?)\s+(\d+)$", query)
+    if match:
+        book_name = match.group(1).strip()
+        chapter = int(match.group(2))
+        
+        book_id = get_book_id(book_name)
+        if book_id is not None:
+             return {
+                "book_id": book_id,
+                "chapter": chapter,
+                "start_verse": None, # Indicates whole chapter
+                "end_verse": None
+            }
+            
+    return None
+
+def get_book_id(name):
+    """Case-insensitive lookup for book ID."""
+    name_lower = name.lower()
+    # Handle common abbreviations if needed, for now just exact match or standard abbreviations could be added
+    # Let's try to match against the 'text' field in books list
+    for book in books:
+        if book["text"].lower() == name_lower:
+            return book["id"]
+    
+    # Optional: Add simple abbreviation mapping here if desired
+    # For now, we rely on full name or exact match from the books list
+    return None

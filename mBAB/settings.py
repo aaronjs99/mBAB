@@ -5,18 +5,37 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "mBABonPython"  # replace later for production
-
 # Detect environment based on hostname or environment variable
 hostname = socket.gethostname()
 try:
-    is_pythonanywhere = 'pythonanywhere' in hostname or 'pythonanywhere' in os.getenv("PYTHONANYWHERE_SITE")
+    is_pythonanywhere = 'pythonanywhere' in hostname or 'pythonanywhere' in os.getenv("PYTHONANYWHERE_SITE", "")
 except TypeError:
     is_pythonanywhere = False
 try:
     is_heroku = "DYNO" in os.environ
 except TypeError:
     is_heroku = False
+
+# Helper to load .env values (since python-dotenv might not be installed)
+def load_env_file(filepath):
+    if not filepath.exists():
+        return
+    with open(filepath) as f:
+        for line in f:
+            if line.strip() and not line.startswith("#") and "=" in line:
+                key, val = line.strip().split("=", 1)
+                os.environ[key] = val.strip('"').strip("'")
+
+# Load .env file
+load_env_file(BASE_DIR / ".env")
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-mBABonPython-dev-key")
+
+# LLM Configuration (DeepSeek > Groq > OpenAI)
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 if is_pythonanywhere:
     print("Running on PythonAnywhere")
@@ -28,7 +47,7 @@ elif is_heroku:
     ALLOWED_HOSTS = ["*"]
 else:
     print("Running locally")
-    DEBUG = True
+    DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
     ALLOWED_HOSTS = ["*"]
 
 # Application definition

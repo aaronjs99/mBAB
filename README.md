@@ -18,12 +18,15 @@
 This web application allows users to search for word sequences—case-sensitive or case-insensitive—across a custom selection of Bible books.
 
 **Features**
-- Multi-book and multi-version search
-- Logical AND (+) and OR (,) search syntax prioritized with parentheses
-- Case sensitivity toggle
-- Book selector grouped by Testament and Section
-- Responsive UI with collapsible book selector
-- Optional themes: Light ☀️, Dark 🌙, and High Contrast ⚫
+- **Multi-book and multi-version search**: Search across any combination of books and versions.
+- **AI-Powered Theological Insights**: One-click explanation of any verse.
+- **Full Chapter Context**: Read the surrounding chapter without leaving results.
+- **Precise Logic Parsing**: AI converts natural language to boolean logic.
+- **Boolean Syntax**: Logical AND (`+`) and OR (`,`) prioritized with parentheses.
+- **Case Sensitivity**: Optional toggle for precise matching.
+- **Smart Book Selector**: Grouped by Testament and Section (Law, Gospels, etc.).
+- **Responsive UI**: Collapsible sidebar and mobile-friendly design.
+- **Themes**: Light ☀️ and Dark 🌙.
 
 Hosted live at [aaronjs.pythonanywhere.com](http://aaronjs.pythonanywhere.com/).
 
@@ -123,8 +126,8 @@ The searchable Bible content is based on SQL databases originally published by [
 - [x] Add pagination for search results
 - [ ] Include search within verse ranges (e.g., John 3:16–21)
 - [ ] Include fuzzy matching or stemming (e.g., "loves" → "love")
-- [ ] Include natural language search (e.g., "verses about forgiveness")
-- [ ] Track recent or most common searches
+- [x] Include natural language search (e.g., "verses about forgiveness")
+- [x] Track recent or most common searches
 - [x] Subdivide books by genre (Law, Gospels, etc.)
 - [x] Enable logical grouping and parentheses in search syntax
 
@@ -149,4 +152,17 @@ The searchable Bible content is based on SQL databases originally published by [
 
 ## License
 
-This project has been licensed under [![The GNU General Public License v3.0](https://www.gnu.org/graphics/gplv3-88x31.png "The GNU General Public License v3.0")](https://www.gnu.org/licenses/gpl-3.0.en.html)
+Copyright © 2025 Aaron John Sabu.
+
+This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)** license.
+  
+[![CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](http://creativecommons.org/licenses/by-nc-sa/4.0/)
+
+**You are free to:**
+- **Share** — copy and redistribute the material in any medium or format.
+- **Adapt** — remix, transform, and build upon the material.
+
+**Under the following terms:**
+- **Attribution** — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
+- **NonCommercial** — You may not use the material for commercial purposes (monetization).
+- **ShareAlike** — If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.
