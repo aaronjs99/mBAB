@@ -190,18 +190,19 @@
                       {% for section_name, book_ids in book_sections.items %}
                         {% if book_ids.0 < 39 and testament == 'Old Testament' or book_ids.0 >= 39 and book_ids.0 < 66 and testament == 'New Testament' %}
                           <div class="space-y-2">
-                             <div class="flex items-center justify-between cursor-pointer group"
-                                  data-action="toggle-section"
-                                  data-book-ids="{{ book_ids|safe }}">
-                                <span class="text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 transition-colors">{{ section_name }}</span>
-                                <span class="text-[10px] text-slate-300 group-hover:text-indigo-300">Select All</span>
+                             <div class="flex items-center justify-between group" data-section-ids="[{{ book_ids|join:',' }}]">
+                                <span class="text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 transition-colors cursor-pointer" onclick="selectOnlySection([{{ book_ids|join:',' }}])">{{ section_name }}</span>
+                                <div class="flex gap-2">
+                                   <span class="section-toggle-text text-[10px] text-slate-300 hover:text-indigo-300 cursor-pointer" onclick="toggleSection([{{ book_ids|join:',' }}], this.closest('[data-section-ids]'))">Select All</span>
+                                   <span class="text-[10px] text-slate-300 hover:text-rose-400 cursor-pointer" onclick="selectOnlySection([{{ book_ids|join:',' }}])">Only</span>
+                                </div>
                              </div>
                              <div class="grid grid-cols-3 gap-1">
                                 {% for book in books %}
                                   {% if book.id in book_ids and book.testament == testament %}
                                     <button type="button"
                                             data-book-id="{{ book.id }}"
-                                            data-action="toggle-book"
+                                            onclick="toggleBook({{ book.id }})"
                                             class="toggle-book text-[10px] py-1 px-1 rounded truncate w-full text-center {% if book.num in selBooks %}selected{% else %}deselected{% endif %}">
                                       {{ book.text }}
                                     </button>
@@ -668,15 +669,47 @@
           if (idx === undefined) return;
           bookBits[idx] ^= 1;
           updateBookBtn(id, bookBits[idx]);
+          refreshSectionTexts();
       };
 
-      window.toggleSection = function(ids) {
-          // Check if all selected
+      window.toggleSection = function(ids, el) {
+          // Check if all selected based on actual book state
           const allSelected = ids.every(id => bookBits[bookIdToIndex[id]] === 1);
           const expected = allSelected ? 0 : 1;
           ids.forEach(id => {
               bookBits[bookIdToIndex[id]] = expected;
               updateBookBtn(id, expected);
+          });
+          // Refresh all section texts
+          refreshSectionTexts();
+      };
+
+      window.selectOnlySection = function(ids) {
+          // Deselect all books first
+          bookBits.fill(0);
+          document.querySelectorAll('.toggle-book').forEach((btn, idx) => {
+              bookBits[idx] = 0;
+              updateBookBtn(parseInt(btn.dataset.bookId), 0);
+          });
+          // Select only books in this section
+          ids.forEach(id => {
+              bookBits[bookIdToIndex[id]] = 1;
+              updateBookBtn(id, 1);
+          });
+          // Refresh all section texts
+          refreshSectionTexts();
+      };
+
+      window.refreshSectionTexts = function() {
+          // Update all section toggle texts based on actual book state
+          document.querySelectorAll('[data-section-ids]').forEach(el => {
+              const idsStr = el.dataset.sectionIds;
+              const ids = JSON.parse(idsStr);
+              const allSelected = ids.every(id => bookBits[bookIdToIndex[id]] === 1);
+              const textSpan = el.querySelector('.section-toggle-text');
+              if (textSpan) {
+                  textSpan.textContent = allSelected ? 'Unselect All' : 'Select All';
+              }
           });
       };
 
@@ -693,14 +726,14 @@
 
          for (let i = start; i < end; i++) {
              bookBits[i] = expected;
-             // Find button by index loop is inefficient, find by ID logic needs reverse map or iteration
-             // Faster: iterate buttons once
          }
          // Refresh all buttons in range
          const buttons = document.querySelectorAll('.toggle-book');
          buttons.forEach((btn, idx) => {
              if (idx >= start && idx < end) updateBookBtn(parseInt(btn.dataset.bookId), expected);
          });
+         // Refresh all section texts
+         refreshSectionTexts();
       };
 
       function updateBookBtn(id, status) {
