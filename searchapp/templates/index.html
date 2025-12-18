@@ -1,0 +1,989 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multi-Book Advanced Bible Search</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              slate: {
+                850: '#151e2e',
+                950: '#020617',
+              },
+              indigo: {
+                450: '#818cf8', // softer indigo
+                550: '#6366f1',
+              }
+            },
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+              serif: ['Merriweather', 'ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif'],
+            }
+          }
+        }
+      };
+      
+      // Init Font Size
+      document.documentElement.style.fontSize = '16px'; 
+    </script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+    <style>
+      body { font-family: 'Inter', sans-serif; }
+      .verse-text { font-family: 'Merriweather', serif; line-height: 1.7; }
+      
+      /* Custom Scrollbar for Sidebar */
+      .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 20px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: rgba(107, 114, 128, 0.8); }
+
+      /* Toggle Button Styles */
+      .toggle-book { transition: all 0.2s ease; }
+      .toggle-book.selected { background-color: #4f46e5; color: white; border-color: transparent; } /* Indigo-600 */
+      .toggle-book.deselected { background-color: transparent; color: inherit; border: 1px solid #e2e8f0; opacity: 0.7; }
+      .dark .toggle-book.deselected { border-color: #334155; }
+      .toggle-book:hover { transform: translateY(-1px); }
+
+      /* Loader Animation */
+      @keyframes shimmer {
+        0% { background-position: -1000px 0; }
+        100% { background-position: 1000px 0; }
+      }
+      .animate-shimmer {
+        animation: shimmer 2s infinite linear;
+        background: linear-gradient(to right, #f3f4f6 4%, #e5e7eb 25%, #f3f4f6 36%);
+        background-size: 1000px 100%;
+      }
+      .dark .animate-shimmer {
+        background: linear-gradient(to right, #1f2937 4%, #374151 25%, #1f2937 36%);
+      }
+    </style>
+    <link rel="icon" href="{% static 'searchapp/images/mBAB_favicon.ico' %}" />
+  </head>
+
+  <body class="flex flex-col h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 overflow-hidden">
+    
+    <!-- HEADER -->
+    <header class="h-16 flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 sm:px-6 z-30 shadow-sm relative">
+      <div class="flex items-center gap-3">
+        <div onclick="toggleSidebar()" class="p-2 -ml-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-500 dark:text-slate-400">
+             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </div>
+        <div onclick="window.location.href='/'" class="flex flex-col cursor-pointer group">
+          <h1 class="text-xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-500 transition-colors">
+            mBAB <span class="hidden sm:inline text-slate-800 dark:text-slate-200 font-semibold">Search</span>
+          </h1>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-4">
+        <!-- Results Per Page -->
+        <div class="hidden sm:flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+           <span>Show:</span>
+           <select id="resultsPerPage" class="bg-transparent dark:bg-slate-900 border-none focus:ring-0 font-medium text-slate-700 dark:text-slate-200 cursor-pointer rounded-md">
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100" selected>100</option>
+              <option value="1000">1K</option>
+              <option value="All">All</option>
+           </select>
+        </div>
+
+        <!-- Font Size -->
+        <div class="hidden sm:flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 mr-2">
+            <button onclick="changeFontSize(-10)" class="px-2 text-xs font-bold text-slate-500 hover:text-indigo-600">A-</button>
+            <span id="fontDisplay" class="text-[10px] text-slate-400 w-8 text-center">100%</span>
+            <button onclick="changeFontSize(10)" class="px-2 text-xs font-bold text-slate-500 hover:text-indigo-600">A+</button>
+        </div>
+
+        <!-- Theme Toggle -->
+        <button id="themeToggleBtn" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors" title="Toggle Theme">
+          <!-- Sun Icon -->
+          <svg id="sunIcon" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+          <!-- Moon Icon -->
+          <svg id="moonIcon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+        </button>
+
+        <!-- Demo Button -->
+        <button onclick="openDemoModal()" class="text-sm font-medium px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
+           Read Me
+        </button>
+      </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden relative">
+      
+      <!-- SIDEBAR (Filters) -->
+      <aside id="sidebar" class="absolute md:relative z-20 w-80 h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform -translate-x-full md:translate-x-0 transition-transform duration-300 flex flex-col shadow-xl md:shadow-none">
+        <div class="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center md:hidden">
+          <span class="font-bold text-slate-700 dark:text-slate-200">Filters</span>
+          <button onclick="toggleSidebar()" class="text-slate-400 hover:text-slate-600">&times;</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
+           <form id="searchForm" onsubmit="event.preventDefault(); triggerSearch();"> <!-- Prevent default, handle manually -->
+              
+              <!-- Settings Group -->
+              <div class="space-y-3">
+                 <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Settings</h3>
+                    <button type="button" onclick="resetFilters()" class="text-xs text-red-500 hover:text-red-600 font-medium">Reset</button>
+                 </div>
+
+                 <!-- Version -->
+                 <div>
+                    <label class="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Version</label>
+                    <select name="version" id="versionSelect" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                      {% for v in versions %}
+                       <option value="{{ v.name }}" {% if v.name == version_name %}selected{% endif %}>{{ v.name }} - {{ v.expansion }}</option>
+                      {% endfor %}
+                    </select>
+                 </div>
+
+                 <!-- Case Toggle -->
+                 <label class="flex items-center gap-2 cursor-pointer group">
+                    <input type="checkbox" id="caseInputToggle" class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 bg-gray-100 dark:bg-gray-800 dark:border-gray-600">
+                    <span class="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-indigo-500 transition-colors">Case Sensitive</span>
+                 </label>
+                 <input type="hidden" id="caseInput" value="False">
+              </div>
+
+              <!-- Favorites Group -->
+              <div class="mt-6 space-y-3">
+                 <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Saved Verses</h3>
+                    <span class="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full" id="favCount">0</span>
+                 </div>
+                 <div id="favoritesList" class="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                     <!-- Items injected via JS -->
+                 </div>
+              </div>
+
+              <!-- Books Group -->
+              <div class="mt-6 space-y-3">
+                 <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Books</h3>
+                 </div>
+                 
+                 <!-- Quick Selects -->
+                 <div class="grid grid-cols-3 gap-2 mb-4">
+                    <button type="button" onclick="toggleTestament('ot')" class="px-2 py-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 transition-colors">Old Test.</button>
+                    <button type="button" onclick="toggleTestament('nt')" class="px-2 py-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 transition-colors">New Test.</button>
+                    <button type="button" onclick="toggleTestament('bib')" class="px-2 py-1.5 text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded transition-colors">All</button>
+                 </div>
+
+                 <!-- Book List -->
+                 <div class="space-y-4">
+                    {% for testament in testaments %}
+                      {% for section_name, book_ids in book_sections.items %}
+                        {% if book_ids.0 < 39 and testament == 'Old Testament' or book_ids.0 >= 39 and book_ids.0 < 66 and testament == 'New Testament' %}
+                          <div class="space-y-2">
+                             <div class="flex items-center justify-between cursor-pointer group"
+                                  data-action="toggle-section"
+                                  data-book-ids="{{ book_ids|safe }}">
+                                <span class="text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 transition-colors">{{ section_name }}</span>
+                                <span class="text-[10px] text-slate-300 group-hover:text-indigo-300">Select All</span>
+                             </div>
+                             <div class="grid grid-cols-3 gap-1">
+                                {% for book in books %}
+                                  {% if book.id in book_ids and book.testament == testament %}
+                                    <button type="button"
+                                            data-book-id="{{ book.id }}"
+                                            data-action="toggle-book"
+                                            class="toggle-book text-[10px] py-1 px-1 rounded truncate w-full text-center {% if book.num in selBooks %}selected{% else %}deselected{% endif %}">
+                                      {{ book.text }}
+                                    </button>
+                                  {% endif %}
+                                {% endfor %}
+                             </div>
+                          </div>
+                        {% endif %}
+                      {% endfor %}
+                    {% endfor %}
+                 </div>
+              </div>
+
+              <input type="hidden" name="books" id="booksField" />
+           </form>
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT -->
+      <main class="flex-1 flex flex-col relative w-full bg-white dark:bg-slate-950">
+        
+        <!-- Search Bar Area (Sticky) -->
+        <div class="p-4 sm:p-6 bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-slate-900 z-10 sticky top-0">
+           <div class="max-w-4xl mx-auto space-y-4">
+              <div class="relative group">
+                 <input 
+                    type="text" 
+                    id="searchInput"
+                    name="search" 
+                    value="{{ search }}" 
+                    placeholder="Search (Press '/' to focus)..." 
+                    class="w-full pl-5 pr-12 py-3 sm:py-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-slate-400"
+                    autocomplete="off"
+                    onkeydown="if(event.key === 'Enter') triggerSearch()"
+                    onfocus="showHistory()"
+                    onblur="setTimeout(hideHistory, 200)" 
+                 >
+                 <button onclick="triggerSearch()" class="absolute right-2 top-2 bottom-2 aspect-square bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center transition-colors shadow-sm group-focus-within:bg-indigo-500">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                 </button>
+                 
+                 <!-- Recent Searches Dropdown -->
+                 <div id="historyDropdown" class="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 hidden overflow-hidden">
+                    <div class="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 flex justify-between">
+                       <span>Recent Searches</span>
+                       <button onmousedown="clearHistory()" class="text-red-500 hover:text-red-700">Clear</button>
+                    </div>
+                    <div id="historyList" class="max-h-60 overflow-y-auto">
+                       <!-- Items injected here -->
+                    </div>
+                 </div>
+              </div>
+
+              <!-- Expression Editor (Dynamic) -->
+              <div id="sqlEditorContainer" class="hidden animate-fade-in-down">
+                  <div class="bg-indigo-50 dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 rounded-lg p-3 flex flex-col sm:flex-row gap-3 items-start sm:items-center shadow-inner">
+                      <div class="flex-1 w-full">
+                          <label class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-1 block">Generated Logic</label>
+                          <textarea id="sqlInput" rows="1" class="w-full bg-white dark:bg-slate-950 border border-indigo-100 dark:border-slate-700 rounded px-3 py-2 font-mono text-sm text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-indigo-500 resize-none" spellcheck="false"></textarea>
+                          <p class="text-[10px] text-slate-400 mt-1 italic">Note: AI generated logic can make mistakes. Review before running.</p>
+                      </div>
+                      <button onclick="runCustomSQL()" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm whitespace-nowrap transition-colors self-end sm:self-center">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                          Run
+                      </button>
+                  </div>
+              </div>
+           </div>
+        </div>
+
+        <!-- Scrollable Results -->
+        <div id="resultsContainer" class="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar scroll-smooth">
+           <div class="max-w-4xl mx-auto min-h-full flex flex-col">
+              
+              <!-- Result Count / Pagination Top -->
+              <div id="resultsHeader" class="hidden flex justify-between items-end mb-6 pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <h2 class="text-2xl font-bold font-serif text-slate-800 dark:text-slate-100">Results <span id="resultCount" class="text-sm font-sans font-medium text-slate-500 ml-2 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full"></span></h2>
+                  <div id="paginationControlsTop" class="flex gap-1 text-sm">
+                      <button id="prevPageTop" class="px-3 py-1 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors">Prev</button>
+                      <span id="pageInfoTop" class="px-3 py-1 flex items-center font-medium text-slate-600 dark:text-slate-400">1 / 1</span>
+                      <button id="nextPageTop" class="px-3 py-1 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors">Next</button>
+                  </div>
+              </div>
+
+              <!-- Content -->
+              <div id="verseResults" class="space-y-4 flex-1">
+                 <!-- Empty State usually here -->
+                 <div id="emptyState" class="text-center py-20 opacity-60">
+                    <svg class="w-16 h-16 mx-auto text-slate-300 dark:text-slate-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    <p class="text-slate-500 text-lg">Select books, enter keywords, and find truth.</p>
+                 </div>
+              </div>
+
+              <!-- Loading Skeleton -->
+              <div id="loadingSkeleton" class="hidden space-y-4 mt-6">
+                 <div class="h-32 rounded-xl animate-shimmer"></div>
+                 <div class="h-32 rounded-xl animate-shimmer"></div>
+                 <div class="h-32 rounded-xl animate-shimmer"></div>
+              </div>
+
+              <!-- Bottom Pagination -->
+              <div id="paginationControlsBottom" class="hidden flex justify-center mt-10 mb-6 gap-2">
+                  <button id="prevPageBottom" class="px-4 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all disabled:opacity-50">Previous</button>
+                  <button id="nextPageBottom" class="px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-md hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:bg-slate-400">Next Page</button>
+              </div>
+           </div>
+        </div>
+      </main>
+
+    </div>
+
+    <!-- Demo Modal (Simplified) -->
+    <div id="demoModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="if(event.target === this) closeDemoModal()">
+       <div class="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+          <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+             <h2 class="text-xl font-bold font-serif text-slate-800 dark:text-slate-100">Search Guide</h2>
+             <button onclick="closeDemoModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-2xl leading-none">&times;</button>
+          </div>
+          <div class="p-6 overflow-y-auto prose dark:prose-invert max-w-none text-sm">
+             <p class="lead">Search using keywords, natural language questions, or boolean logic.</p>
+             <div class="grid md:grid-cols-2 gap-6 mt-4">
+                <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                   <h4 class="mt-0 text-indigo-600 font-bold">Boolean Operators</h4>
+                   <ul class="list-none pl-0 space-y-2 mt-2">
+                      <li><code class="bg-white dark:bg-slate-900 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-xs font-mono">+</code> <strong>AND</strong> (Both required)</li>
+                      <li><code class="bg-white dark:bg-slate-900 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-xs font-mono">,</code> <strong>OR</strong> (Either matches)</li>
+                      <li><code class="bg-white dark:bg-slate-900 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-xs font-mono">( )</code> <strong>Group</strong> Logic</li>
+                   </ul>
+                </div>
+                <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
+                   <h4 class="mt-0 text-indigo-600 font-bold">Examples</h4>
+                   <ul class="list-none pl-0 space-y-2 mt-2 font-mono text-xs">
+                      <li>faith + works</li>
+                      <li>(grace, mercy) + truth</li>
+                      <li>John 3:16</li>
+                   </ul>
+                </div>
+             </div>
+             <div class="mt-6 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                  <h4 class="mt-0 text-slate-700 dark:text-slate-300 font-bold mb-2">New Features</h4>
+                  <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div class="flex flex-col items-center">
+                          <div class="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm mb-1 text-amber-500">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                          </div>
+                          <span>AI Insight</span>
+                      </div>
+                      <div class="flex flex-col items-center">
+                          <div class="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm mb-1 text-indigo-500">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                          </div>
+                          <span>Read Chapter</span>
+                      </div>
+                      <div class="flex flex-col items-center">
+                          <div class="p-2 bg-white dark:bg-slate-900 rounded-lg shadow-sm mb-1 text-emerald-500">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                          </div>
+                          <span>Smart Copy</span>
+                      </div>
+                  </div>
+             </div>
+             </div>
+          </div>
+          <div class="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 text-right">
+             <button onclick="closeDemoModal()" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors">Got it</button>
+          </div>
+       </div>
+    </div>
+
+    <!-- Feature Modal (Dynamic) -->
+    <div id="featureModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="if(event.target === this) closeFeatureModal()">
+       <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col transform transition-all scale-100">
+          <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+             <div class="flex items-center gap-3">
+                 <div id="modalIcon" class="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg"></div>
+                 <h2 id="modalTitle" class="text-lg font-bold font-serif text-slate-800 dark:text-slate-100"></h2>
+             </div>
+             <button onclick="closeFeatureModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">&times;</button>
+          </div>
+          <div id="modalContent" class="p-6 overflow-y-auto">
+             <!-- Content injected via JS -->
+          </div>
+       </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+      // STATE
+      let allResults = [];
+      let currentPage = 1;
+      let explanationCache = {}; // Cache for AI insights
+      const bookBits = new Array(66).fill(0);
+      const bookIdToIndex = {};
+
+      // DOM ELEMENTS
+      const searchInput = document.getElementById("searchInput");
+      const booksField = document.getElementById("booksField");
+      const verseResults = document.getElementById("verseResults");
+      const loadingSkeleton = document.getElementById("loadingSkeleton");
+      const resultsHeader = document.getElementById("resultsHeader");
+      const emptyState = document.getElementById("emptyState");
+      const caseInput = document.getElementById("caseInput");
+      const caseInputToggle = document.getElementById("caseInputToggle");
+
+      // INITIALIZATION
+         document.addEventListener('DOMContentLoaded', () => {
+          // Theme Init
+          const savedTheme = localStorage.getItem("theme") || "dark";
+          setTheme(savedTheme);
+          
+          // Favorites Init
+          renderFavoritesList();
+
+         // Map Book IDs
+         document.querySelectorAll('.toggle-book').forEach((btn, idx) => {
+           const bookId = parseInt(btn.dataset.bookId);
+           bookIdToIndex[bookId] = idx;
+           // If class 'selected' is baked in from server render:
+           if (btn.classList.contains("selected")) bookBits[idx] = 1;
+         });
+
+         // Restore URL Params
+         restoreFromURL();
+
+         // Case Toggle Listener
+         caseInputToggle.addEventListener('change', (e) => {
+            caseInput.value = e.target.checked ? "True" : "False";
+         });
+      });
+
+      // --- SEARCH LOGIC ---
+
+      async function triggerSearch() {
+         const keyword = searchInput.value;
+         const version = document.getElementById("versionSelect").value;
+         const caseSensitive = caseInput.value;
+         
+         // Encode Bits
+         const bits = [...bookBits].reverse().join("");
+         booksField.value = BigInt("0b" + bits).toString();
+
+         // UI Updates
+         saveToHistory(keyword);
+         verseResults.innerHTML = "";
+         emptyState.classList.add("hidden");
+         resultsHeader.classList.add("hidden");
+         loadingSkeleton.classList.remove("hidden");
+         
+         // Clear caches on new search
+         explanationCache = {};
+
+         try {
+             // Fetch
+             const response = await fetch(`/ajax/search/?search=${encodeURIComponent(keyword)}&version=${version}&case=${caseSensitive}&books=${booksField.value}`);
+             if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+             
+             const data = await response.json();
+             allResults = data.results;
+             
+             // Handle Expression Editor
+             const sqlContainer = document.getElementById("sqlEditorContainer");
+             if (data.generated_sql) {
+                sqlContainer.classList.remove("hidden");
+                document.getElementById("sqlInput").value = data.generated_sql;
+             } else {
+                sqlContainer.classList.add("hidden");
+             }
+
+             // Render
+             loadingSkeleton.classList.add("hidden");
+             if (allResults.length > 0) {
+                resultsHeader.classList.remove("hidden");
+                document.getElementById("resultCount").textContent = allResults.length;
+                renderPage(1);
+             } else {
+                emptyState.classList.remove("hidden");
+                emptyState.innerHTML = `<div class="py-10"><p class="text-xl text-slate-500">No matches found.</p></div>`;
+             }
+
+             // Push URL
+             const url = new URL(window.location.href);
+             url.searchParams.set("search", keyword);
+             url.searchParams.set("version", version);
+             url.searchParams.set("case", caseSensitive);
+             url.searchParams.set("books", booksField.value);
+             window.history.pushState({}, "", url);
+             
+         } catch (err) {
+             console.error("Search failed:", err);
+             loadingSkeleton.classList.add("hidden");
+             emptyState.classList.remove("hidden");
+             emptyState.innerHTML = `<div class="py-10 text-red-500"><p class="text-xl font-bold mb-2">Error loading results</p><p class="text-sm font-mono bg-red-50 dark:bg-red-900/20 p-2 rounded inline-block">${err.message}</p></div>`;
+         }
+      }
+
+      function runCustomSQL() {
+         const sql = document.getElementById("sqlInput").value;
+         if (sql) {
+            searchInput.value = sql;
+            triggerSearch();
+         }
+      }
+
+      // --- RENDERING ---
+
+      function renderPage(page) {
+         const container = document.getElementById("verseResults");
+         container.innerHTML = "";
+         const resultsPerPage = getResultsPerPage();
+         const totalPages = Math.ceil(allResults.length / resultsPerPage);
+         
+         const start = (page - 1) * resultsPerPage;
+         const end = start + resultsPerPage;
+         const slice = allResults.slice(start, end);
+
+         slice.forEach((row, index) => {
+            const card = document.createElement("div");
+            card.className = "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group";
+            
+            const fullRef = `${row.Book} ${row.Chapter}:${row.Versecount}`;
+            const isFav = isFavorite(fullRef);
+            const favColorClass = isFav ? 'text-red-500' : 'text-slate-400 hover:text-red-500';
+            const favFill = isFav ? 'currentColor' : 'none';
+
+            // Decorative Accent
+            const accent = document.createElement("div");
+            accent.className = "absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity";
+            card.appendChild(accent);
+
+            card.innerHTML += `
+               <div class="flex items-baseline justify-between mb-3 border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <h3 class="font-bold text-lg text-indigo-700 dark:text-indigo-400 font-sans tracking-tight">
+                     ${row.Book} <span class="text-slate-500 dark:text-slate-500 ml-1">${row.Chapter}:${row.Versecount}</span>
+                  </h3>
+                  <div class="flex gap-2">
+                      <button class="text-slate-400 hover:text-indigo-500 transition-colors" title="Read Chapter" onclick="openChapter(${start + index})">
+                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                      </button>
+                      <button class="text-slate-400 hover:text-amber-500 transition-colors" title="Explain with AI" onclick="openExplain(${start + index})">
+                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                      </button>
+                      </button>
+                      <button class="text-slate-400 hover:text-emerald-500 transition-colors" title="Copy" onclick="copyVerse(${start + index}, this)">
+                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                      </button>
+                      <button class="${favColorClass} transition-colors" title="Save Verse" onclick="toggleFavorite(${start + index})">
+                         <svg class="w-4 h-4" fill="${favFill}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                      </button>
+                  </div>
+               </div>
+               <p class="verse-text text-lg text-slate-800 dark:text-slate-200 leading-relaxed">
+                  ${row.verse.map(part => part.highlight 
+                     ? `<span class="bg-yellow-200 dark:bg-yellow-900/60 text-yellow-900 dark:text-yellow-100 font-medium px-1 rounded mx-0.5 shadow-sm">${part.highlight}</span>`
+                     : part.text
+                  ).join("")}
+               </p>
+            `;
+            container.appendChild(card);
+         });
+
+         updatePaginationHandlers(page, totalPages);
+         
+         currentPage = page;
+         // Scroll to top of results
+         if (page > 1) document.getElementById("resultsContainer").scrollTop = 0;
+      }
+      
+      function updatePaginationHandlers(page, totalPages) {
+          const pageStr = `${page} / ${totalPages}`;
+          const tops = document.getElementById("pageInfoTop");
+          if(tops) tops.textContent = pageStr;
+          
+          const prevBtns = [document.getElementById("prevPageTop"), document.getElementById("prevPageBottom")];
+          const nextBtns = [document.getElementById("nextPageTop"), document.getElementById("nextPageBottom")];
+          
+          const bottomControls = document.getElementById("paginationControlsBottom");
+          if(bottomControls) bottomControls.classList.toggle("hidden", totalPages <= 1);
+          
+          prevBtns.forEach(b => { 
+             if(b) {
+                 b.disabled = page === 1; 
+                 b.onclick = () => renderPage(page - 1); 
+             }
+          });
+          nextBtns.forEach(b => { 
+             if(b) {
+                b.disabled = page === totalPages; 
+                b.onclick = () => renderPage(page + 1); 
+             }
+          });
+      }
+
+      function copyVerse(index, btn) {
+          const row = allResults[index];
+          if (!row) return;
+          
+          const ref = `${row.Book} ${row.Chapter}:${row.Versecount}`;
+          const text = row.verse.map(p => p.highlight || p.text).join("");
+          
+          navigator.clipboard.writeText(`${ref} - ${text}`);
+          showToast("Copied to clipboard!");
+          
+          // Optional: change icon temporarily if button is passed (it is passed as second arg onclick)
+          // But since onclick pass only index, we need to find the button or just rely on toast.
+          // The onclick was updated to `copyVerse(${start+index})`. The `this` argument was removed.
+          // Let's stick to Toast only for a cleaner UI.
+      }
+
+      // --- HELPERS & TOGGLES ---
+
+      function toggleSidebar() {
+         const sidebar = document.getElementById("sidebar");
+         // On mobile, default is -translate-x-full (hidden). Toggle it to show (remove class -> 0).
+         // On desktop, default is md:translate-x-0 (shown). Toggle it to hide (remove class -> falls back to -translate-x-full).
+         if (window.innerWidth >= 768) {
+             sidebar.classList.toggle("md:translate-x-0");
+         } else {
+             sidebar.classList.toggle("-translate-x-full");
+         }
+      }
+      
+      // Font Size Logic
+      let currentFontSize = 100; // percent
+      function changeFontSize(delta) {
+          currentFontSize = Math.max(80, Math.min(150, currentFontSize + delta));
+          document.documentElement.style.fontSize = (currentFontSize / 100 * 16) + 'px'; 
+          // Note: using em/rem based workflow, changing root font size scales everything.
+          // Since I used Tailwind (rem based), this works brilliantly.
+          document.getElementById("fontDisplay").textContent = currentFontSize + "%";
+      }
+
+      function setTheme(theme) {
+         document.documentElement.className = theme; // 'dark' or ''
+         localStorage.setItem("theme", theme);
+         
+         const btn = document.getElementById("themeToggleBtn");
+         btn.onclick = () => setTheme(theme === "dark" ? "" : "dark");
+      }
+
+      function resetFilters() {
+         bookBits.fill(0);
+         document.querySelectorAll('.toggle-book').forEach(b => {
+            b.classList.remove("selected");
+            b.classList.add("deselected");
+         });
+         document.getElementById("versionSelect").selectedIndex = 0;
+         caseInput.value = "False";
+         caseInputToggle.checked = false;
+         searchInput.value = "";
+         searchInput.focus();
+      }
+
+      function getResultsPerPage() {
+         const val = document.getElementById("resultsPerPage").value;
+         return val === "All" ? Infinity : parseInt(val);
+      }
+
+      // Books Logic
+      window.toggleBook = function(id) {
+          const idx = bookIdToIndex[id];
+          if (idx === undefined) return;
+          bookBits[idx] ^= 1;
+          updateBookBtn(id, bookBits[idx]);
+      };
+
+      window.toggleSection = function(ids) {
+          // Check if all selected
+          const allSelected = ids.every(id => bookBits[bookIdToIndex[id]] === 1);
+          const expected = allSelected ? 0 : 1;
+          ids.forEach(id => {
+              bookBits[bookIdToIndex[id]] = expected;
+              updateBookBtn(id, expected);
+          });
+      };
+
+      window.toggleTestament = function(type) {
+         const ranges = { ot: [0, 39], nt: [39, 66], bib: [0, 66] };
+         const [start, end] = ranges[type];
+         
+         // Are all in range selected?
+         let allSelected = true;
+         for (let i = start; i < end; i++) {
+             if (bookBits[i] === 0) { allSelected = false; break; }
+         }
+         const expected = allSelected ? 0 : 1;
+
+         for (let i = start; i < end; i++) {
+             bookBits[i] = expected;
+             // Find button by index loop is inefficient, find by ID logic needs reverse map or iteration
+             // Faster: iterate buttons once
+         }
+         // Refresh all buttons in range
+         const buttons = document.querySelectorAll('.toggle-book');
+         buttons.forEach((btn, idx) => {
+             if (idx >= start && idx < end) updateBookBtn(parseInt(btn.dataset.bookId), expected);
+         });
+      };
+
+      function updateBookBtn(id, status) {
+          const btn = document.querySelector(`.toggle-book[data-book-id="${id}"]`);
+          if (btn) {
+              btn.classList.toggle("selected", status === 1);
+              btn.classList.toggle("deselected", status === 0);
+          }
+      }
+
+      // URL Restore
+      function restoreFromURL() {
+         const params = new URLSearchParams(window.location.search);
+         if (params.has("search")) {
+             searchInput.value = params.get("search");
+             document.getElementById("versionSelect").value = params.get("version") || "ESV";
+             
+             const caseSens = params.get("case") === "True";
+             caseInput.value = caseSens ? "True" : "False";
+             caseInputToggle.checked = caseSens;
+
+             const booksVal = params.get("books");
+             if (booksVal) {
+                 const bits = BigInt(booksVal).toString(2).padStart(66, "0").split("").reverse();
+                 bits.forEach((b, i) => {
+                     bookBits[i] = b === "1" ? 1 : 0;
+                 });
+                 // Update UI
+                 document.querySelectorAll('.toggle-book').forEach((btn, idx) => {
+                    updateBookBtn(parseInt(btn.dataset.bookId), bookBits[idx]);
+                 });
+             }
+             // Trigger Search
+             triggerSearch();
+         }
+      }
+
+      // --- FAVORITES (BOOKMARKS) ---
+      let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+
+      function toggleFavorite(index) {
+          const row = allResults[index];
+          if (!row) return;
+
+          const ref = `${row.Book} ${row.Chapter}:${row.Versecount}`;
+          const text = row.verse.map(p => p.highlight || p.text).join("");
+          
+          const existingIdx = favorites.findIndex(f => f.ref === ref);
+          
+          if (existingIdx > -1) {
+              favorites.splice(existingIdx, 1);
+              showToast("Removed from Favorites", "success");
+          } else {
+              favorites.unshift({ ref, text, timestamp: Date.now() });
+              showToast("Added to Favorites", "success");
+          }
+          
+          localStorage.setItem("favorites", JSON.stringify(favorites));
+          renderPage(currentPage); // Re-render to update heart icons
+          renderFavoritesList();
+      }
+
+      function isFavorite(ref) {
+          return favorites.some(f => f.ref === ref);
+      }
+      
+      function renderFavoritesList() {
+          const container = document.getElementById("favoritesList");
+          if (!container) return; // If UI element not added yet
+          
+          if (favorites.length === 0) {
+              container.innerHTML = `<div class="text-slate-400 text-sm text-center italic py-4">No favorites yet</div>`;
+              return;
+          }
+          
+          container.innerHTML = favorites.map(f => `
+              <div class="mb-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 hover:shadow-sm transition-shadow group relative">
+                  <div class="flex justify-between items-baseline mb-1">
+                      <span class="font-bold text-indigo-600 dark:text-indigo-400 text-xs">${f.ref}</span>
+                      <button onclick="removeFavorite('${f.ref}')" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                      </button>
+                  </div>
+                  <p class="text-xs text-slate-600 dark:text-slate-400 line-clamp-2" title="${f.text}">${f.text}</p>
+              </div>
+          `).join("");
+      }
+
+      function removeFavorite(ref) {
+           favorites = favorites.filter(f => f.ref !== ref);
+           localStorage.setItem("favorites", JSON.stringify(favorites));
+           renderPage(currentPage);
+           renderFavoritesList();
+      }
+
+      // --- HISTORY & SHORTCUTS ---
+
+      function saveToHistory(query) {
+         if (!query.trim()) return;
+         let history = JSON.parse(localStorage.getItem("searchHistory") || "[]");
+         // Remove duplicates and keep top 10
+         history = history.filter(h => h.toLowerCase() !== query.toLowerCase());
+         history.unshift(query);
+         if (history.length > 10) history = history.slice(0, 10);
+         localStorage.setItem("searchHistory", JSON.stringify(history));
+      }
+
+      function showHistory() {
+         const history = JSON.parse(localStorage.getItem("searchHistory") || "[]");
+         const list = document.getElementById("historyList");
+         const dropdown = document.getElementById("historyDropdown");
+         
+         if (history.length === 0) {
+            dropdown.classList.add("hidden");
+            return;
+         }
+
+         list.innerHTML = history.map(q => `
+            <div onmousedown="selectHistory('${q.replace(/'/g, "\\'")}')" class="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between text-slate-600 dark:text-slate-300 transition-colors">
+               <span>${q}</span>
+               <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+         `).join("");
+         
+         dropdown.classList.remove("hidden");
+      }
+
+      function hideHistory() {
+         document.getElementById("historyDropdown").classList.add("hidden");
+      }
+
+      function selectHistory(q) {
+         searchInput.value = q;
+         triggerSearch();
+         hideHistory();
+      }
+
+      function clearHistory() {
+         localStorage.removeItem("searchHistory");
+         hideHistory();
+      }
+
+      // Keyboard Shortcuts
+      document.addEventListener('keydown', (e) => {
+         // Press '/' to focus search
+         if (e.key === '/' && document.activeElement !== searchInput) {
+            e.preventDefault();
+            searchInput.focus();
+         }
+         // Escape to close things
+         if (e.key === 'Escape') {
+            hideHistory();
+            document.getElementById("sidebar").classList.add("-translate-x-full");
+            closeDemoModal();
+            searchInput.blur();
+         }
+      });
+      
+      // Modal
+      function openDemoModal() { document.getElementById("demoModal").classList.remove("hidden"); }
+      function closeDemoModal() { document.getElementById("demoModal").classList.add("hidden"); }
+
+      // --- ADVANCED FEATURES (Toasts & AI) ---
+
+      function showToast(message, type = "success") {
+          const container = document.getElementById("toastContainer");
+          const toast = document.createElement("div");
+          // Type styles
+          const bg = type === "error" ? "bg-red-500" : "bg-slate-800";
+          
+          toast.className = `${bg} text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-3 transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-auto`;
+          toast.innerHTML = `
+             <svg class="w-5 h-5 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+             <span class="font-medium text-sm">${message}</span>
+          `;
+          
+          container.appendChild(toast);
+          
+          // Animate In
+          requestAnimationFrame(() => {
+              toast.classList.remove("translate-y-10", "opacity-0");
+          });
+          
+          // Animate Out
+          setTimeout(() => {
+              toast.classList.add("translate-y-10", "opacity-0");
+              setTimeout(() => toast.remove(), 300);
+          }, 3000);
+      }
+
+      const featureModal = document.getElementById("featureModal");
+      const modalTitle = document.getElementById("modalTitle");
+      const modalContent = document.getElementById("modalContent");
+      const modalIcon = document.getElementById("modalIcon");
+
+      function openFeatureModal(title, iconHtml, contentHtml) {
+          modalTitle.textContent = title;
+          modalIcon.innerHTML = iconHtml;
+          modalContent.innerHTML = contentHtml;
+          featureModal.classList.remove("hidden");
+      }
+
+      function closeFeatureModal() {
+          featureModal.classList.add("hidden");
+      }
+      
+      // Feature: Explain Verse
+      function openExplain(index) {
+          const row = allResults[index];
+          if (!row) return;
+          
+          const ref = `${row.Book} ${row.Chapter}:${row.Versecount}`;
+          // Reconstruct raw text from parts
+          const text = row.verse.map(p => p.highlight || p.text).join("");
+          
+          const loadingHtml = `<div class="animate-pulse space-y-3"><div class="h-4 bg-slate-200 rounded w-3/4"></div><div class="h-4 bg-slate-200 rounded w-full"></div><div class="h-4 bg-slate-200 rounded w-5/6"></div></div>`;
+          openFeatureModal("Theological Insight", 
+              `<svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`,
+              loadingHtml
+          );
+          
+          // Check Cache
+          if (explanationCache[ref]) {
+              modalContent.innerHTML = `<p class="text-slate-700 dark:text-slate-300 text-lg leading-relaxed">${explanationCache[ref]}</p>`;
+              return;
+          }
+          
+          fetch(`/explain?ref=${encodeURIComponent(ref)}&text=${encodeURIComponent(text)}`)
+              .then(res => res.json())
+              .then(data => {
+                  if (data.error) throw new Error(data.error);
+                  explanationCache[ref] = data.explanation; // Cache it
+                  modalContent.innerHTML = `<p class="text-slate-700 dark:text-slate-300 text-lg leading-relaxed">${data.explanation}</p>`;
+              })
+              .catch(err => {
+                  modalContent.innerHTML = `<p class="text-red-500">Error generating explanation.</p>`;
+                  console.error(err);
+              });
+      }
+
+      // Feature: Read Chapter
+      function openChapter(index) {
+           const row = allResults[index];
+           if (!row) return;
+           
+           const book = row.Book;
+           const chapter = row.Chapter;
+           const targetVerse = row.Versecount;
+
+           const loadingHtml = `<div class="animate-pulse space-y-3"><div class="h-4 bg-slate-200 rounded w-full"></div><div class="h-4 bg-slate-200 rounded w-full"></div><div class="h-4 bg-slate-200 rounded w-full"></div></div>`;
+           openFeatureModal(`${book} ${chapter}`, 
+              `<svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>`,
+              loadingHtml
+          );
+          
+          const version = document.getElementById("versionSelect").value;
+          fetch(`/chapter?book=${encodeURIComponent(book)}&chapter=${chapter}&version=${version}`)
+              .then(res => res.json())
+              .then(data => {
+                  if (data.error) throw new Error(data.error);
+                  
+                  const versesHtml = data.verses.map(v => {
+                      const isTarget = parseInt(v.verse) === parseInt(targetVerse);
+                      const outputClass = isTarget ? "bg-indigo-50 dark:bg-indigo-900/30 -mx-2 px-2 rounded border-l-4 border-indigo-500" : "";
+                      return `<div class="mb-2 ${outputClass}" id="v${v.verse}">
+                          <span class="text-xs font-bold text-slate-400 select-none mr-1">${v.verse}</span>
+                          <span class="text-slate-700 dark:text-slate-300">${v.text}</span>
+                      </div>`;
+                  }).join("");
+                  
+                  modalContent.innerHTML = `<div class="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">${versesHtml}</div>`;
+                  
+                  // Scroll to target
+                  setTimeout(() => {
+                      const el = document.getElementById(`v${targetVerse}`);
+                      if (el) el.scrollIntoView({block: "center", behavior: "smooth"});
+                  }, 100);
+              })
+              .catch(err => {
+                   modalContent.innerHTML = `<p class="text-red-500">Error loading chapter.</p>`;
+              });
+      }
+
+    </script>
+  </body>
+</html>
