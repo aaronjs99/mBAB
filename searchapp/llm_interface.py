@@ -21,22 +21,30 @@ def get_llm_client():
     """
     Get the configured LLM client. 
     Priority:
-    1. Ollama (Local Preferred)
-    2. Cloud Fallbacks (Groq, OpenAI)
+    1. Ollama (Local Preferred) - only if running
+    2. Cloud Fallbacks (DeepSeek, Groq, OpenAI)
     """
-    # 1. Ollama (Localhost)
-    # Check if Ollama is running by a quick ping? Or just return the client configured for it
-    # We use the OpenAI client but point to local Ollama
-    try:
-        if OpenAI:
-             # Test connection or just return it? 
-             # For speed, we just assume it works if we set it up.
-             return OpenAI(
-                 base_url="http://localhost:11434/v1",
-                 api_key="ollama" # required but unused
-             ), "ollama"
-    except Exception:
-        pass
+    import urllib.request
+    import urllib.error
+    
+    # 1. Ollama (Localhost) - Check if actually running first
+    if OpenAI:
+        try:
+            # Quick ping to Ollama server
+            req = urllib.request.Request(
+                "http://localhost:11434/api/tags",
+                method="GET"
+            )
+            req.add_header("Connection", "close")
+            with urllib.request.urlopen(req, timeout=1) as resp:
+                if resp.status == 200:
+                    return OpenAI(
+                        base_url="http://localhost:11434/v1",
+                        api_key="ollama"  # required but unused
+                    ), "ollama"
+        except (urllib.error.URLError, TimeoutError, OSError):
+            # Ollama not running, fall through to cloud providers
+            pass
 
     # 2. Cloud Fallbacks
     # DeepSeek (Preferred Cloud)
