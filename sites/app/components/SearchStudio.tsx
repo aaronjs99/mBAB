@@ -103,6 +103,18 @@ export function SearchStudio() {
     }
   }, []);
 
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (event.key === "/" && !event.metaKey && !event.ctrlKey && target?.tagName !== "INPUT" && target?.tagName !== "TEXTAREA") {
+        event.preventDefault();
+        document.getElementById("query")?.focus();
+      }
+    };
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, []);
+
   function persistSaved(items: SearchResult[]) {
     setSaved(items);
     localStorage.setItem("mbab:saved-verses", JSON.stringify(items));
@@ -244,22 +256,15 @@ export function SearchStudio() {
       )}
 
       <main id="main-content">
-        <section className="hero">
-          <div className="hero-copy">
-            <p className="eyebrow"><span className="live-dot" aria-hidden="true" /> Search every thread of Scripture</p>
-            <h1>Find the thread,<br /><em>not just the word.</em></h1>
-            <p className="hero-intro">Search across books, combine ideas, and see exactly how your query works. No black box. Just Scripture, carefully indexed.</p>
-          </div>
-          <div className="hero-aside" aria-label="Product highlights">
-            <div><strong>66</strong><span>books, one canvas</span></div>
-            <div><strong>3</strong><span>clear query modes</span></div>
-            <div><strong>0</strong><span>accounts required</span></div>
-          </div>
+        <section className="search-intro">
+          <p className="eyebrow"><span className="live-dot" aria-hidden="true" /> Multi-Book Advanced Bible Search</p>
+          <h1>Search Scripture.</h1>
+          <p>Find a word, combine ideas, or trace a pattern across any set of books.</p>
         </section>
 
         <section className="search-card" aria-labelledby="search-heading">
           <div className="search-card-top">
-            <div><p className="eyebrow">Search studio</p><h2 id="search-heading">What are you looking for?</h2></div>
+            <div><p className="eyebrow">Search studio</p><h2 id="search-heading">What do you want to find?</h2></div>
             <div className="edition-control">
               <label htmlFor="version">Edition</label>
               <select id="version" value={version} onChange={(event) => setVersion(event.target.value)}>
@@ -295,7 +300,10 @@ export function SearchStudio() {
             </div>
             <div className="query-meta">
               <p id="query-help">{modeDescription(mode)}</p>
-              <label className="check-control"><input type="checkbox" checked={caseSensitive} onChange={(event) => setCaseSensitive(event.target.checked)} /> Match case</label>
+              <div className="query-options">
+                <span className="keyboard-hint"><kbd>/</kbd> Focus search</span>
+                <label className="check-control"><input type="checkbox" checked={caseSensitive} onChange={(event) => setCaseSensitive(event.target.checked)} /> Match case</label>
+              </div>
             </div>
 
             <div className="book-filter">
