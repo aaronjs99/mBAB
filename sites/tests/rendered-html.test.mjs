@@ -25,7 +25,9 @@ test("server-renders the finished mBAB search experience", async () => {
   assert.match(html, /Find the thread/i);
   assert.match(html, /What do you want to find\?/i);
   assert.match(html, /All words/i);
-  assert.match(html, /Open-text editions/i);
+  assert.match(html, /Berean Standard Bible/i);
+  assert.match(html, /American King James Version/i);
+  assert.match(html, /11 open editions/i);
   assert.match(html, /og:image/i);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });

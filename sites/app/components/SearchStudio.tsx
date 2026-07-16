@@ -411,13 +411,13 @@ export function SearchStudio() {
         )}
 
         <section className="principles-strip" aria-label="mBAB principles">
-          <p>Open-text editions</p><p>Transparent logic</p><p>Private by default</p><p>No ads</p>
+          <p>11 open editions</p><p>Transparent logic</p><p>Private by default</p><p>No ads</p>
         </section>
       </main>
 
       <footer>
         <div><Link className="brand footer-brand" href="/"><span className="brand-mark" aria-hidden="true"><span>m</span>B</span><span className="brand-copy"><strong>mBAB</strong><small>Search Scripture with intention.</small></span></Link></div>
-        <div className="footer-note"><p>Currently searching public-domain and open-text editions. Saved verses stay on this device.</p><p>Made with care by Aaron John Sabu · <a href="https://github.com/aaronjs99/mBAB">View the source</a></p></div>
+        <div className="footer-note"><p>Searching public-domain and open-text editions from the mBAB corpus. UKJV credit: I love Jesus (UKJV).</p><p>Saved verses stay on this device · Made with care by Aaron John Sabu · <a href="https://github.com/aaronjs99/mBAB">View the source</a></p></div>
       </footer>
     </div>
   );

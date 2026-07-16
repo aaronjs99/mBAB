@@ -53,8 +53,15 @@ export const BOOKS: BibleBook[] = [...OLD_TESTAMENT, ...NEW_TESTAMENT].map(
 );
 
 export const VERSIONS = [
-  { id: "KJV", label: "King James Version", short: "KJV" },
+  { id: "AKJV", label: "American King James Version", short: "AKJV" },
   { id: "ASV", label: "American Standard Version", short: "ASV" },
+  { id: "BBE", label: "Bible in Basic English", short: "BBE" },
+  { id: "BSB", label: "Berean Standard Bible", short: "BSB" },
+  { id: "DBY", label: "Darby Bible", short: "DBY" },
+  { id: "GEN", label: "Geneva Bible", short: "GEN" },
+  { id: "KJV", label: "King James Version", short: "KJV" },
+  { id: "UKJV", label: "Updated King James Version", short: "UKJV" },
+  { id: "WBT", label: "Webster's Bible Translation", short: "WBT" },
   { id: "WEB", label: "World English Bible", short: "WEB" },
   { id: "YLT", label: "Young's Literal Translation", short: "YLT" },
 ] as const;
@@ -83,4 +90,3 @@ export function modeDescription(mode: SearchMode): string {
   if (mode === "any") return "A verse may contain any of the words.";
   return "+ means AND, comma means OR, and parentheses control grouping.";
 }
-
