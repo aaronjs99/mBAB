@@ -1,3 +1,7 @@
+"""Canonical book and edition metadata used by the Django search app."""
+
+import re
+
 testaments = ["Old Testament", "New Testament"]
 
 testament_map = {
@@ -21,29 +25,9 @@ book_sections = {
 
 versions = [
     {
-        "name": "ESV",
-        "expansion": "English Standard Version",
-        "wiki": "https://en.wikipedia.org/wiki/English_Standard_Version",
-    },
-    {
-        "name": "KJV",
-        "expansion": "King James Version",
-        "wiki": "https://en.wikipedia.org/wiki/King_James_Version",
-    },
-    {
-        "name": "NKJV",
-        "expansion": "New King James Version",
-        "wiki": "https://en.wikipedia.org/wiki/New_King_James_Version",
-    },
-    {
-        "name": "NASB",
-        "expansion": "New American Standard Bible",
-        "wiki": "https://en.wikipedia.org/wiki/New_American_Standard_Bible",
-    },
-    {
-        "name": "AMP",
-        "expansion": "Amplified Bible",
-        "wiki": "https://en.wikipedia.org/wiki/Amplified_Bible",
+        "name": "AKJV",
+        "expansion": "American King James Version",
+        "wiki": "https://www.stepbible.org/version.jsp?version=AKJV",
     },
     {
         "name": "ASV",
@@ -51,14 +35,14 @@ versions = [
         "wiki": "https://en.wikipedia.org/wiki/American_Standard_Version",
     },
     {
-        "name": "YLT",
-        "expansion": "Young's Literal Translation",
-        "wiki": "https://en.wikipedia.org/wiki/Young%27s_Literal_Translation",
-    },
-    {
         "name": "BBE",
         "expansion": "Bible in Basic English",
-        "wiki": "https://en.wikipedia.org/wiki/Bible_in_Basic_English",
+        "wiki": "https://ebible.org/engBBE/",
+    },
+    {
+        "name": "BSB",
+        "expansion": "Berean Standard Bible",
+        "wiki": "https://berean.bible/licensing.htm",
     },
     {
         "name": "DBY",
@@ -66,24 +50,19 @@ versions = [
         "wiki": "https://en.wikipedia.org/wiki/Darby_Bible",
     },
     {
-        "name": "WEB",
-        "expansion": "World English Bible",
-        "wiki": "https://en.wikipedia.org/wiki/World_English_Bible",
+        "name": "GEN",
+        "expansion": "Geneva Bible",
+        "wiki": "https://en.wikipedia.org/wiki/Geneva_Bible",
     },
     {
-        "name": "BSB",
-        "expansion": "Berean Study Bible",
-        "wiki": "https://www.bereanbible.com/",
-    },
-    {
-        "name": "AKJV",
-        "expansion": "Authorized King James Version",
+        "name": "KJV",
+        "expansion": "King James Version",
         "wiki": "https://en.wikipedia.org/wiki/King_James_Version",
     },
     {
         "name": "UKJV",
         "expansion": "Updated King James Version",
-        "wiki": "https://en.wikipedia.org/wiki/King_James_Version",
+        "wiki": "https://www.stepbible.org/version.jsp?version=UKJV",
     },
     {
         "name": "WBT",
@@ -91,9 +70,14 @@ versions = [
         "wiki": "https://en.wikipedia.org/wiki/Webster%27s_Revision",
     },
     {
-        "name": "GEN",
-        "expansion": "Geneva Bible",
-        "wiki": "https://en.wikipedia.org/wiki/Geneva_Bible",
+        "name": "WEB",
+        "expansion": "World English Bible",
+        "wiki": "https://ebible.org/engwebp/copyright.htm",
+    },
+    {
+        "name": "YLT",
+        "expansion": "Young's Literal Translation",
+        "wiki": "https://en.wikipedia.org/wiki/Young%27s_Literal_Translation",
     },
 ]
 
@@ -176,7 +160,6 @@ books = [
 sql_select = "SELECT * FROM bible WHERE "
 sql_order = "ORDER BY Book, Chapter, Versecount"
 
-import re
 
 def parse_verse_reference(query):
     """
@@ -185,38 +168,38 @@ def parse_verse_reference(query):
       - Book Chapter:Verse (e.g., "John 3:16")
       - Book Chapter:Verse-Verse (e.g., "John 3:16-21")
       - Book Chapter (e.g., "John 3") -> Returns all verses in chapter
-    
+
     Returns:
         None if no match.
         Dict with keys: book_id, chapter, start_verse, end_verse (optional)
     """
     # Normalize query: remove extra spaces
     query = query.strip()
-    
+
     # Regex for "Book Chapter:Verse[-Verse]" or "Book Chapter"
     # We need to handle book names with spaces (e.g. "1 John")
     # Strategy: Try to match the end of the string first for the numbers
-    
+
     # Pattern 1: Chapter:Verse-Verse or Chapter:Verse
     # Group 1: Book Name
     # Group 2: Chapter
     # Group 3: Start Verse
     # Group 4: End Verse (optional)
     match = re.search(r"^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$", query)
-    
+
     if match:
         book_name = match.group(1).strip()
         chapter = int(match.group(2))
         start_verse = int(match.group(3))
         end_verse = int(match.group(4)) if match.group(4) else start_verse
-        
+
         book_id = get_book_id(book_name)
         if book_id is not None:
             return {
                 "book_id": book_id,
                 "chapter": chapter,
                 "start_verse": start_verse,
-                "end_verse": end_verse
+                "end_verse": end_verse,
             }
 
     # Pattern 2: Chapter only (e.g. "John 3")
@@ -224,17 +207,18 @@ def parse_verse_reference(query):
     if match:
         book_name = match.group(1).strip()
         chapter = int(match.group(2))
-        
+
         book_id = get_book_id(book_name)
         if book_id is not None:
-             return {
+            return {
                 "book_id": book_id,
                 "chapter": chapter,
-                "start_verse": None, # Indicates whole chapter
-                "end_verse": None
+                "start_verse": None,  # Indicates whole chapter
+                "end_verse": None,
             }
-            
+
     return None
+
 
 def get_book_id(name):
     """Case-insensitive lookup for book ID."""
@@ -244,7 +228,7 @@ def get_book_id(name):
     for book in books:
         if book["text"].lower() == name_lower:
             return book["id"]
-    
+
     # Optional: Add simple abbreviation mapping here if desired
     # For now, we rely on full name or exact match from the books list
     return None

@@ -1,186 +1,119 @@
-# The Multi-Book Advanced Bible Search (mBAB)
+# mBAB — Multi-Book Advanced Bible Search
 
-## Table of Contents
+mBAB is a focused Scripture search engine for combining words, controlling Boolean logic, and searching an exact set of Bible books. It is available through two maintained web surfaces:
 
-- [Introduction](#introduction)  
-- [Getting Started for Developers](#getting-started-for-developers)  
-  - [Useful Resources](#useful-resources)  
-  - [Requirements](#requirements)  
-  - [Installation Steps](#installation-steps)  
-  - [Setting Up the Bible Databases](#setting-up-the-bible-databases)  
-  - [Running the Application](#running-the-application)  
-- [Contributors](#contributors)  
-- [Roadmap & Potential Contributions](#roadmap--potential-contributions)  
-- [License](#license)
+- [Public mBAB Sites app](https://mbab-bible-search.aaronjs99.chatgpt.site) — the modern, public search experience
+- [mBAB on PythonAnywhere](https://aaronjs.pythonanywhere.com) — the original Django application with optional AI-assisted parsing
 
-## Introduction
+## What mBAB does
 
-This web application allows users to search for word sequences—case-sensitive or case-insensitive—across a custom selection of Bible books.
+- Searches all 66 books or any custom book selection
+- Supports **all words**, **any word**, and grouped Boolean expressions
+- Recognizes direct references such as `John 3:16` and `John 3:16-21`
+- Offers 11 public-domain or openly licensed editions
+- Highlights matches and preserves canonical Bible order
+- Saves verses locally on the visitor's device
+- Creates shareable, reproducible searches
+- Adds optional natural-language parsing and verse explanations when an LLM provider is configured
 
-**Features**
-- **Multi-book and multi-version search**: Search across any combination of books and versions.
-- **AI-Powered Theological Insights**: One-click explanation of any verse.
-- **Full Chapter Context**: Read the surrounding chapter without leaving results.
-- **Precise Logic Parsing**: AI converts natural language to boolean logic.
-- **Boolean Syntax**: Logical AND (`+`) and OR (`,`) prioritized with parentheses.
-- **Case Sensitivity**: Optional toggle for precise matching.
-- **Smart Book Selector**: Grouped by Testament and Section (Law, Gospels, etc.).
-- **Responsive UI**: Collapsible sidebar and mobile-friendly design.
-- **Themes**: Light ☀️ and Dark 🌙.
+## Repository map
 
-Hosted live at [aaronjs.pythonanywhere.com](http://aaronjs.pythonanywhere.com/).
-
-Originally built with Flask, now rebuilt using Django for better scalability and maintainability.
-
-![A Search Example](./searchapp/static/searchapp/images/mBAB_demo.gif "Searching for either 'holy' or both 'spirit' and 'christ' within the non-Pauline New Testament books in the English Standard Version English Bible")
-
-## Getting Started for Developers
-
-This guide will help you set up and run the Multi-Book Advanced Bible Search (mBAB) project locally for development or customization.
-
-### Useful Resources
-
-- [Django Official Documentation](https://docs.djangoproject.com/en/stable/)
-- [Jinja Template Syntax](https://jinja.palletsprojects.com/en/2.11.x/templates/) — used for templating
-- [Python `sqlite3` Module](https://docs.python.org/3/library/sqlite3.html)
-- [Tailwind CSS](https://tailwindcss.com/docs) — for utility-first styling
-
-### Requirements
-
-- Python 3.11 or higher
-- `pip` and `venv` (usually bundled with Python)
-- A Unix-like shell (Linux/macOS or WSL on Windows recommended)
-- `make` (optional but recommended for easier setup and management)
-
-### Installation Steps
-
-```bash
-# Clone the codebase repository
-git clone https://github.com/aaronjohnsabu1999/mBAB.git ~/mBAB
-cd ~/mBAB
-
-# Set up a virtual environment
-make venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-make install
-
-# Apply Django migrations
-make migrate
+```text
+mBAB/
+├── mBAB/                  # Django project settings and root routes
+├── searchapp/             # PythonAnywhere/Django search application
+│   ├── static/            # Django images and static assets
+│   └── templates/         # Django HTML templates
+├── sites/                 # Public Sites application and hosting metadata
+│   ├── app/               # Search UI and API route
+│   ├── public/            # Social preview assets
+│   ├── tests/             # Render and API smoke tests
+│   └── worker/            # Cloudflare-compatible worker entrypoint
+├── .github/workflows/     # Python and Sites continuous integration
+├── setup.sh               # Downloads the external Bible databases
+└── Makefile               # Common Django and Sites commands
 ```
 
-### Setting Up the Bible Databases
-To keep the main repo lightweight, the SQLite Bible databases are hosted separately.
-Download or clone them from Bible Databases and place the `.db` files inside a folder named `databases/` at the root of this project.
+Generated output, local databases, secrets, caches, and installed dependencies are intentionally excluded from Git.
+
+## Bible editions and data
+
+The searchable SQLite files live in the separate [bible-databases repository](https://github.com/aaronjs99/bible-databases). The public mBAB interfaces currently expose:
+
+`AKJV`, `ASV`, `BBE`, `BSB`, `DBY`, `GEN`, `KJV`, `UKJV`, `WBT`, `WEB`, and `YLT`.
+
+Install the databases locally with:
 
 ```bash
-# Clone the database repository
-mkdir ~/mBAB/databases/
-git clone https://github.com/aaronjohnsabu1999/bible-databases.git ~/bible-databases/
-
-# Move databases to codebase directory
-cp ~/bible-databases/DB/*.db ~/mBAB/databases/
+./setup.sh
 ```
 
-### Running the Application
-Start the Django development server using make:
+The `databases/` directory is local runtime data and is not committed to this repository.
 
-#### Default Localhost Run
+## Django development
+
+Requires Python 3.11 or newer.
 
 ```bash
-make run
+python -m venv venv
+source venv/bin/activate       # Windows PowerShell: venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+./setup.sh
+python manage.py migrate
+python manage.py runserver
 ```
-This will run the server at `127.0.0.1:8000`. Open your browser and navigate to [http://localhost:8000/](http://localhost:8000/).
 
-#### Access on a Local Network (e.g., from your phone)
-
-Override the host and/or port by passing variables:
+Useful checks:
 
 ```bash
-make run HOST=0.0.0.0            # Binds to all interfaces
-make run HOST=0.0.0.0 PORT=8080  # Custom port
+python manage.py check
+python manage.py test
+python -m compileall -q mBAB searchapp
 ```
 
-Then visit in your mobile browser: `http://<your-computer-local-ip>:8000/`. To find your local IP:
+## Sites development
+
+Requires Node.js 22.13 or newer.
 
 ```bash
-# On Linux/macOS
-hostname -I
-
-# On Windows
-ipconfig
+cd sites
+npm ci
+npm run dev
 ```
 
-Note: Ensure both devices are on the same Wi-Fi and that your firewall allows access on the selected port.
+Run the full Sites validation suite with:
 
-## Contributors
+```bash
+npm run build
+npx tsc --noEmit
+npm run lint
+node --test tests/rendered-html.test.mjs
+```
 
-Formatting and design feedback have been generously provided by my parents, Sabu John and Jessy Sabu John, along with several other users.
-Flask development support was offered extensively by [@hbhoyar](https://github.com/hbhoyar).
-The searchable Bible content is based on SQL databases originally published by [@scrollmapper](https://github.com/scrollmapper) and later cleaned and reorganized by me. To keep this repository lightweight and easy to clone, those databases have been moved to a separate repository: [Bible Databases](https://github.com/aaronjohnsabu1999/bible-databases).
+## Configuration
 
-## Roadmap & Potential Contributions
+Copy `.env.example` to an untracked `.env` file or provide the same values through the host environment.
 
-### Search Capabilities
-- [x] Pagination for search results
-- [x] Natural language search (e.g., "verses about forgiveness")
-- [x] Logical grouping with parentheses in search syntax
-- [x] Subdivide books by genre (Law, Gospels, etc.)
-- [x] Track recent searches
-- [ ] Search within verse ranges (e.g., John 3:16–21)
-- [ ] Fuzzy matching or stemming (e.g., "loves" → "love")
-- [ ] Cross-reference lookup (show related verses)
-- [ ] Search by Strong's numbers for original language study
+| Variable | Purpose |
+| --- | --- |
+| `DJANGO_SECRET_KEY` | Django signing key |
+| `DJANGO_DEBUG` | Enables local debug mode when set to `true` |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated Django hostnames |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Comma-separated trusted HTTPS origins |
+| `GROQ_API_KEY` | Optional Groq natural-language features |
+| `DEEPSEEK_API_KEY` | Optional DeepSeek natural-language features |
+| `OPENAI_API_KEY` | Optional OpenAI natural-language features |
 
-### AI Features
-- [x] One-click theological explanations for any verse
-- [x] Full chapter context reader
-- [ ] Comparative analysis across translations
-- [ ] AI-generated study notes
-- [ ] Topic-based verse recommendations
+Without an LLM key or local Ollama server, exact reference and Boolean search still work normally.
 
-### User Features
-- [x] Bookmarking/saving favorite verses (via local storage)
-- [x] User guide and help modal
-- [ ] Optional user accounts with cloud sync
-- [ ] Export saved verses (PDF, text, clipboard)
-- [ ] Share verses via link or social media
-- [ ] Audio playback of verses (text-to-speech)
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the production workflow.
 
-### Accessibility & Internationalization
-- [ ] Multi-language UI (Spanish, Hindi, Malayalam, etc.)
-- [ ] Keyboard-only navigation mode
-- [ ] Screen reader optimization
-- [ ] Support copyrighted versions (NIV, NLT, etc.) with permission
+## Credits
 
-### Developer & API
-- [ ] REST API for external integrations
-- [ ] Embeddable widget for church websites
-- [ ] Webhook support for automation
-
-### UI/UX Enhancements
-- [x] Loading animations and skeletons
-- [x] Fully responsive mobile design
-- [x] Collapsible sidebar with filters
-- [x] Light and dark themes
-- [x] Smart section toggles (Select All / Deselect All / Only)
-- [ ] Customizable color themes
-- [ ] Reading mode (distraction-free full-screen)
+mBAB was created by Aaron John Sabu. Formatting and design feedback was provided by Sabu John, Jessy Sabu John, and other early users. Flask development support was provided by [@hbhoyar](https://github.com/hbhoyar). The database corpus builds on work originally published by [@scrollmapper](https://github.com/scrollmapper) and subsequently cleaned and reorganized for mBAB.
 
 ## License
 
 Copyright © 2025 Aaron John Sabu.
 
-This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)** license.
-  
-[![CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](http://creativecommons.org/licenses/by-nc-sa/4.0/)
-
-**You are free to:**
-- **Share** — copy and redistribute the material in any medium or format.
-- **Adapt** — remix, transform, and build upon the material.
-
-**Under the following terms:**
-- **Attribution** — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
-- **NonCommercial** — You may not use the material for commercial purposes (monetization).
-- **ShareAlike** — If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.
+The project source is licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International license](LICENSE). Bible text licensing varies by edition; downstream users are responsible for respecting each edition's terms.

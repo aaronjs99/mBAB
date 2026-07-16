@@ -1,6 +1,11 @@
 from django.test import TestCase
 from unittest.mock import patch, MagicMock, ANY
-from searchapp.llm_interface import detect_intent, generate_search_expression, validate_and_sanitize_sql
+from searchapp.llm_interface import (
+    detect_intent,
+    generate_search_expression,
+    validate_and_sanitize_sql,
+)
+
 
 class IntentClassificationTests(TestCase):
     def test_detect_intent(self):
@@ -8,18 +13,22 @@ class IntentClassificationTests(TestCase):
         # Natural language (meta-data stripping needed) -> LLM
         self.assertEqual(detect_intent("verses about hope"), "LLM")
         self.assertEqual(detect_intent("show me verses on love"), "LLM")
-        
+
         # Plain keywords -> LLM (to consistency handle parsing/stripping if needed)
         self.assertEqual(detect_intent("Jesus"), "LLM")
-        self.assertEqual(detect_intent("love and mercy"), "LLM") 
+        self.assertEqual(detect_intent("love and mercy"), "LLM")
 
         # Explicit Syntax -> STANDARD
         self.assertEqual(detect_intent("John 3:16"), "STANDARD")
         self.assertEqual(detect_intent("hope + love"), "STANDARD")
-        
+        self.assertEqual(detect_intent("hope, love"), "STANDARD")
+
         # Explicit Prefixes trigger LLM
-        self.assertEqual(detect_intent("ask: what does the bible say about love?"), "LLM")
+        self.assertEqual(
+            detect_intent("ask: what does the bible say about love?"), "LLM"
+        )
         self.assertEqual(detect_intent("sql: verses about forgiveness"), "LLM")
+
 
 class LLMGenerationTests(TestCase):
     @patch("searchapp.llm_interface.get_llm_client")
@@ -34,7 +43,7 @@ class LLMGenerationTests(TestCase):
         mock_get_client.return_value = (mock_client, "openai")
 
         expr, error = generate_search_expression("verses about love and hope")
-        
+
         self.assertIsNone(error)
         self.assertEqual(expr, "(hope, trust) + (love, charity)")
 
@@ -48,13 +57,10 @@ class LLMGenerationTests(TestCase):
         mock_get_client.return_value = (mock_client, "deepseek")
 
         expr, error = generate_search_expression("verses about grace")
-        
+
         # Verify model selection
         mock_client.chat.completions.create.assert_called_with(
-            model="deepseek-chat",
-            messages=ANY,
-            temperature=0,
-            max_tokens=60
+            model="deepseek-chat", messages=ANY, temperature=0, max_tokens=60
         )
         self.assertEqual(expr, "grace + mercy")
 
@@ -68,15 +74,20 @@ class LLMGenerationTests(TestCase):
         mock_get_client.return_value = (mock_client, "openai")
 
         expr, error = generate_search_expression("verses about love and hope")
-        
+
         self.assertEqual(expr, "love + hope")
+
 
 class SQLValidationTests(TestCase):
     def test_safe_sql(self):
         self.assertTrue(validate_and_sanitize_sql("SELECT * FROM bible"))
-        self.assertTrue(validate_and_sanitize_sql("SELECT * FROM bible WHERE verse LIKE '%test%'"))
+        self.assertTrue(
+            validate_and_sanitize_sql("SELECT * FROM bible WHERE verse LIKE '%test%'")
+        )
 
     def test_unsafe_sql(self):
         self.assertFalse(validate_and_sanitize_sql("DROP TABLE bible"))
         self.assertFalse(validate_and_sanitize_sql("DELETE FROM bible"))
-        self.assertFalse(validate_and_sanitize_sql("SELECT * FROM bible; DROP TABLE bible"))
+        self.assertFalse(
+            validate_and_sanitize_sql("SELECT * FROM bible; DROP TABLE bible")
+        )

@@ -23,7 +23,9 @@ test("server-renders the finished mBAB search experience", async () => {
   const html = await response.text();
   assert.match(html, /<title>mBAB — Multi-Book Advanced Bible Search<\/title>/i);
   assert.match(html, /Find the thread/i);
-  assert.match(html, /What do you want to find\?/i);
+  assert.match(html, /What are you looking for\?/i);
+  assert.match(html, /How mBAB works/i);
+  assert.match(html, /A better question leads/i);
   assert.match(html, /All words/i);
   assert.match(html, /Berean Standard Bible/i);
   assert.match(html, /American King James Version/i);

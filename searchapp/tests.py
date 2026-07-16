@@ -1,5 +1,15 @@
+from unittest.mock import patch
+
 from django.test import TestCase
-from searchapp.views import tokenize_expr, to_postfix, build_sql_from_postfix
+from searchapp.bibledata import versions
+from searchapp.views import (
+    build_sql_from_postfix,
+    normalize_version,
+    parse_book_mask,
+    to_postfix,
+    tokenize_expr,
+)
+
 
 class SearchLogicTests(TestCase):
     def test_tokenize_simple(self):
@@ -24,6 +34,10 @@ class SearchLogicTests(TestCase):
         postfix = to_postfix(tokens)
         self.assertEqual(postfix, ["A", "B", "C", ",", "+"])
 
+    def test_postfix_rejects_unbalanced_parentheses(self):
+        with self.assertRaisesRegex(ValueError, "Unmatched opening parenthesis"):
+            to_postfix(["(", "love", "+", "hope"])
+
     def test_sql_generation_simple(self):
         postfix = ["love"]
         sql, params = build_sql_from_postfix(postfix)
@@ -44,6 +58,7 @@ class SearchLogicTests(TestCase):
 
     def test_regexp_check(self):
         from searchapp.views import regexp_check
+
         # Case insensitive by default
         self.assertTrue(regexp_check(r"\bgrace\b", "Amazing Grace"))
         self.assertTrue(regexp_check(r"\bgrace\b", "grace"))
@@ -55,11 +70,11 @@ class SearchLogicTests(TestCase):
 
     def test_parse_reference(self):
         from searchapp.bibledata import parse_verse_reference
-        
+
         # Test Book Chapter:Verse
         ref = parse_verse_reference("John 3:16")
         self.assertIsNotNone(ref)
-        self.assertEqual(ref["book_id"], 42) # John is 43rd book, index 42
+        self.assertEqual(ref["book_id"], 42)  # John is 43rd book, index 42
         self.assertEqual(ref["chapter"], 3)
         self.assertEqual(ref["start_verse"], 16)
         self.assertEqual(ref["end_verse"], 16)
@@ -75,7 +90,41 @@ class SearchLogicTests(TestCase):
         self.assertIsNotNone(ref)
         self.assertEqual(ref["chapter"], 3)
         self.assertIsNone(ref["start_verse"])
-        
+
         # Test Invalid
         ref = parse_verse_reference("NotABook 1:1")
         self.assertIsNone(ref)
+
+
+class SearchConfigurationTests(TestCase):
+    def test_public_edition_catalog_is_consistent(self):
+        self.assertEqual(len(versions), 11)
+        self.assertEqual(normalize_version("BSB"), "BSB")
+        self.assertEqual(normalize_version("NOT-A-VERSION"), "KJV")
+
+    def test_book_mask_decoding(self):
+        self.assertEqual(parse_book_mask(str((1 << 0) | (1 << 42))), {0, 42})
+        with self.assertRaisesRegex(ValueError, "selected-book mask"):
+            parse_book_mask("not-a-number")
+
+
+class SearchEndpointTests(TestCase):
+    @patch("searchapp.views.run_search", return_value=([], None))
+    def test_ajax_accepts_current_search_parameter(self, run_search):
+        response = self.client.get("/ajax/search/", {"search": "grace"})
+
+        self.assertEqual(response.status_code, 200)
+        run_search.assert_called_once()
+
+    @patch("searchapp.views.run_search", return_value=([], None))
+    def test_ajax_accepts_legacy_keyword_parameter(self, run_search):
+        response = self.client.get("/ajax/search/", {"keyword": "grace"})
+
+        self.assertEqual(response.status_code, 200)
+        run_search.assert_called_once()
+
+    def test_ajax_rejects_empty_queries(self):
+        response = self.client.get("/ajax/search/")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Enter a search query.")

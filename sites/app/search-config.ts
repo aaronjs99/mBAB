@@ -86,7 +86,7 @@ export function bookMask(ids: number[]): string {
 }
 
 export function modeDescription(mode: SearchMode): string {
-  if (mode === "all") return "Every word must appear in the same verse.";
-  if (mode === "any") return "A verse may contain any of the words.";
-  return "+ means AND, comma means OR, and parentheses control grouping.";
+  if (mode === "all") return "Find verses containing every word.";
+  if (mode === "any") return "Find verses containing at least one word.";
+  return "Use + for AND, comma for OR, and parentheses to group ideas.";
 }

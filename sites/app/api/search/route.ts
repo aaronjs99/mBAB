@@ -108,6 +108,7 @@ export async function GET(request: Request) {
   if (built.error || !built.expression) return json({ error: built.error }, 400);
 
   const legacyUrl = new URL(LEGACY_SEARCH_URL);
+  legacyUrl.searchParams.set("search", built.expression);
   legacyUrl.searchParams.set("keyword", built.expression);
   legacyUrl.searchParams.set("version", version);
   legacyUrl.searchParams.set("case", caseSensitive ? "True" : "False");
@@ -155,4 +156,3 @@ export async function GET(request: Request) {
     );
   }
 }
-

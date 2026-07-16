@@ -211,6 +211,20 @@ export function SearchStudio() {
     localStorage.setItem("mbab:theme", next ? "dark" : "light");
   }
 
+  function returnToSearch(nextMode?: SearchMode) {
+    if (nextMode) setMode(nextMode);
+    document.getElementById("search-heading")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => document.getElementById("query")?.focus(), 450);
+  }
+
+  function openBookPicker() {
+    setShowBooks(true);
+    window.setTimeout(
+      () => document.getElementById("book-picker")?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      50,
+    );
+  }
+
   const resultRange = response
     ? `${(response.page - 1) * response.pageSize + (response.total ? 1 : 0)}–${Math.min(response.page * response.pageSize, response.total)}`
     : "";
@@ -257,14 +271,17 @@ export function SearchStudio() {
 
       <main id="main-content">
         <section className="search-intro">
-          <p className="eyebrow"><span className="live-dot" aria-hidden="true" /> Multi-Book Advanced Bible Search</p>
-          <h1>Search Scripture.</h1>
-          <p>Find a word, combine ideas, or trace a pattern across any set of books.</p>
+          <p className="eyebrow"><span className="live-dot" aria-hidden="true" /> 11 editions · 66 books · one clear search</p>
+          <h1>Search Scripture.<span>See the pattern.</span></h1>
+          <p className="intro-copy">Explore a word, connect ideas, or trace a theme across exactly the books you choose.</p>
+          <div className="intro-proof" aria-label="Search features">
+            <span>Transparent logic</span><span>No account needed</span><span>No ads</span>
+          </div>
         </section>
 
         <section className="search-card" aria-labelledby="search-heading">
           <div className="search-card-top">
-            <div><p className="eyebrow">Search studio</p><h2 id="search-heading">What do you want to find?</h2></div>
+            <div><p className="eyebrow">Begin your search</p><h2 id="search-heading">What are you looking for?</h2></div>
             <div className="edition-control">
               <label htmlFor="version">Edition</label>
               <select id="version" value={version} onChange={(event) => setVersion(event.target.value)}>
@@ -306,7 +323,7 @@ export function SearchStudio() {
               </div>
             </div>
 
-            <div className="book-filter">
+            <div className="book-filter" id="book-picker">
               <div className="book-filter-bar">
                 <div className="group-pills" aria-label="Book collections">
                   {BOOK_GROUPS.map((group) => (
@@ -346,7 +363,7 @@ export function SearchStudio() {
         {error && <div className="error-banner" role="alert"><strong>Search paused.</strong> {error}</div>}
         {notice && <div className="toast" role="status">{notice}</div>}
 
-        {response ? (
+        {response && (
           <section className="results-layout" id="search-results" aria-labelledby="results-heading">
             <div className="results-main">
               <div className="results-head">
@@ -399,19 +416,39 @@ export function SearchStudio() {
               <p className="inspector-note">mBAB never hides the query behind an algorithm. What you type is what the index evaluates.</p>
             </aside>
           </section>
-        ) : (
-          <section className="how-section" id="how-it-works">
-            <div className="section-heading"><p className="eyebrow">Built for serious exploration</p><h2>From a hunch to a pattern<br />in one deliberate search.</h2></div>
-            <div className="feature-grid">
-              <article><span className="feature-index">01</span><h3>Combine ideas</h3><p>Require every word, search alternatives, or build a grouped Boolean expression.</p><code>(faith + works), grace</code></article>
-              <article><span className="feature-index">02</span><h3>Control the canon</h3><p>Search all 66 books, one testament, a familiar section, or your own exact set.</p><div className="mini-books"><span>Gen</span><span>Ps</span><span>John</span><span>Rom</span></div></article>
-              <article><span className="feature-index">03</span><h3>Keep the thread</h3><p>Save key verses locally and share a complete, reproducible search with one link.</p><div className="mini-result"><strong>Romans 5:1</strong><span>therefore being justified by faith…</span></div></article>
-            </div>
-          </section>
         )}
 
+        <section className="how-section" id="how-it-works" aria-labelledby="how-heading">
+          <div className="section-heading">
+            <div><p className="eyebrow">How mBAB works</p><h2 id="how-heading">A better question leads<br />to a clearer thread.</h2></div>
+            <p className="section-intro">Start simple, then shape the search until it matches the way you are reading.</p>
+          </div>
+          <div className="feature-grid">
+            <article>
+              <span className="feature-index">01</span>
+              <h3>Start with an idea</h3>
+              <p>Enter a word, a phrase, or two ideas you want to see together in the same verse.</p>
+              <button className="how-action" type="button" onClick={() => void performSearch(1, EXAMPLES[0])}>Try “love + mercy” <span aria-hidden="true">→</span></button>
+            </article>
+            <article>
+              <span className="feature-index">02</span>
+              <h3>Shape the logic</h3>
+              <p>Use every word, any word, or a grouped expression. Then choose an edition and the exact books to search.</p>
+              <div className="logic-preview" aria-label="Available search modes"><span>ALL</span><span>ANY</span><span>ADVANCED</span></div>
+              <button className="how-action" type="button" onClick={openBookPicker}>Choose books <span aria-hidden="true">→</span></button>
+            </article>
+            <article>
+              <span className="feature-index">03</span>
+              <h3>Follow what you find</h3>
+              <p>Matches are highlighted and explained. Save meaningful verses on your device or share the complete search.</p>
+              <div className="mini-result"><strong>Romans 5:1</strong><span>…being justified by faith…</span></div>
+              <button className="how-action" type="button" onClick={() => returnToSearch("advanced")}>Build an advanced search <span aria-hidden="true">→</span></button>
+            </article>
+          </div>
+        </section>
+
         <section className="principles-strip" aria-label="mBAB principles">
-          <p>11 open editions</p><p>Transparent logic</p><p>Private by default</p><p>No ads</p>
+          <p>11 open editions</p><p>Transparent logic</p><p>Local saved verses</p><p>No ads</p>
         </section>
       </main>
 

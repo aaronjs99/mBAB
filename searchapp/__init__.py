@@ -1,0 +1,1 @@
+"""mBAB Django search application."""

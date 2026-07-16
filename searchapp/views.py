@@ -1,18 +1,27 @@
-import re, sqlite3
-from django.shortcuts import render
+"""Django views and search helpers for mBAB."""
+
+from __future__ import annotations
+
+import logging
+import re
+import sqlite3
+from pathlib import Path
+from typing import Any
+
+from django.conf import settings
 from django.http import JsonResponse
+from django.shortcuts import render
 
 from .bibledata import (
-    testaments,
     book_sections,
     books,
-    versions,
-    sql_select,
-    sql_order,
     parse_verse_reference,
+    sql_order,
+    sql_select,
+    testaments,
+    versions,
 )
-import sys
-from .llm_interface import detect_intent, generate_search_expression, validate_and_sanitize_sql, explain_verse
+from .llm_interface import detect_intent, explain_verse, generate_search_expression
 
 try:
     from .gtag_secret import GTAG_ID
@@ -20,15 +29,24 @@ except ImportError:
     GTAG_ID = None
 
 
+logger = logging.getLogger(__name__)
+
+BOOK_BY_ID = {book["id"]: book for book in books}
+VERSION_BY_NAME = {version["name"]: version for version in versions}
+DEFAULT_VERSION = "KJV"
+ALL_BOOK_IDS = frozenset(BOOK_BY_ID)
+ALL_BOOK_MASK = (1 << len(BOOK_BY_ID)) - 1
+
+
 def index(request, *args, **kwargs):
-    """Render homepage or run search if params are in URL (for sharable links)."""
+    """Render the search page or restore a shared search URL."""
     if request.GET.get("keyword") and request.GET.get("books"):
         return search(request)
     return db_refresh(request, blank=True)
 
 
 def search(request, *args, **kwargs):
-    """Handle the search form submission and render filtered search results."""
+    """Render results for a traditional form submission."""
     return db_refresh(
         request,
         input_words=request.GET.get("keyword", ""),
@@ -37,201 +55,278 @@ def search(request, *args, **kwargs):
 
 
 def dict_factory(cursor, row):
-    """Convert database rows into dictionaries keyed by column name."""
-    return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
+    """Convert a SQLite row into a dictionary."""
+    return {column[0]: row[index] for index, column in enumerate(cursor.description)}
 
 
-def find_version(version_name):
-    """Return the version expansion and wiki link for a given short version name."""
-    version = next(item for item in versions if item["name"] == version_name)
+def normalize_version(version_name: str | None) -> str:
+    """Return a supported version name, falling back to KJV."""
+    if version_name in VERSION_BY_NAME:
+        return str(version_name)
+    return DEFAULT_VERSION
+
+
+def find_version(version_name: str) -> tuple[str, str]:
+    """Return the display name and information URL for a version."""
+    version = VERSION_BY_NAME[normalize_version(version_name)]
     return version["expansion"], version["wiki"]
 
 
-def sort_rows(rows):
-    """Sort search result rows by book, chapter, and verse order."""
+def database_path(version_name: str) -> Path:
+    """Return the canonical local database path for a supported version."""
+    version = normalize_version(version_name)
+    return Path(settings.BASE_DIR) / "databases" / f"{version}Bible_Database.db"
+
+
+def sort_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Sort rows in canonical Bible order."""
     return sorted(
         rows, key=lambda row: (row["Book"], row["Chapter"], row["Versecount"])
     )
 
 
-def tokenize_expr(expr):
-    """Split a Boolean keyword expression into tokens (words and operators)."""
-    # Pre-process natural boolean keywords for Standard Mode convenience
-    # Replace " and " with " + " and " or " with " , "
-    expr = re.sub(r"\bAND\b", "+", expr, flags=re.IGNORECASE)
-    expr = re.sub(r"\bOR\b", ",", expr, flags=re.IGNORECASE)
-    return re.findall(r"\w+|[(),+]", expr)
+def tokenize_expr(expression: str) -> list[str]:
+    """Split a Boolean expression into words, operators, and parentheses."""
+    expression = re.sub(r"\bAND\b", "+", expression, flags=re.IGNORECASE)
+    expression = re.sub(r"\bOR\b", ",", expression, flags=re.IGNORECASE)
+    return re.findall(r"\w+|[(),+]", expression)
 
 
-def to_postfix(tokens):
-    """
-    Convert infix Boolean tokens into postfix (Reverse Polish Notation).
-
-    Uses + as AND, , as OR, and supports parentheses.
-    """
+def to_postfix(tokens: list[str]) -> list[str]:
+    """Convert infix Boolean tokens to postfix notation."""
     precedence = {"+": 2, ",": 1}
-    output = []
-    stack = []
+    output: list[str] = []
+    operators: list[str] = []
+
     for token in tokens:
         if token.isalnum():
             output.append(token)
-        elif token in ("+", ","):
+        elif token in precedence:
             while (
-                stack
-                and stack[-1] in precedence
-                and precedence[stack[-1]] >= precedence[token]
+                operators
+                and operators[-1] in precedence
+                and precedence[operators[-1]] >= precedence[token]
             ):
-                output.append(stack.pop())
-            stack.append(token)
+                output.append(operators.pop())
+            operators.append(token)
         elif token == "(":
-            stack.append(token)
+            operators.append(token)
         elif token == ")":
-            while stack and stack[-1] != "(":
-                output.append(stack.pop())
-            stack.pop()
-    while stack:
-        output.append(stack.pop())
+            while operators and operators[-1] != "(":
+                output.append(operators.pop())
+            if not operators:
+                raise ValueError("Unmatched closing parenthesis.")
+            operators.pop()
+
+    if "(" in operators:
+        raise ValueError("Unmatched opening parenthesis.")
+    output.extend(reversed(operators))
     return output
 
 
-def regexp_check(pattern, item, case_sensitive=False):
-    """SQLite REGEXP implementation using Python's re module."""
-    if item is None:
+def regexp_check(pattern: str, value: object, case_sensitive: bool = False) -> bool:
+    """Implement SQLite REGEXP with optional case sensitivity."""
+    if value is None:
         return False
     flags = 0 if case_sensitive else re.IGNORECASE
-    return re.search(pattern, str(item), flags) is not None
+    return re.search(pattern, str(value), flags) is not None
 
 
-def build_sql_from_postfix(postfix_tokens, case_sensitive=False):
-    """
-    Build a safe SQL WHERE clause from postfix Boolean tokens.
-    Uses REGEXP with word boundaries for precision.
+def build_sql_from_postfix(
+    postfix_tokens: list[str], case_sensitive: bool = False
+) -> tuple[str, list[str]]:
+    """Build a parameterized SQL WHERE clause from postfix tokens."""
+    del case_sensitive  # Matching behavior is supplied by SQLite's REGEXP callback.
+    stack: list[tuple[str, list[str]]] = []
 
-    Args:
-        postfix_tokens: list of tokens in postfix order.
-        case_sensitive: if True, performs case-sensitive search.
-
-    Returns:
-        A tuple of SQL WHERE clause string and list of values for binding.
-    """
-    stack = []
-    values = []
     for token in postfix_tokens:
         if token.isalnum():
-            # Use strict word boundaries so 'grace' doesn't match 'disgrace'
-            pattern = f"\\b{re.escape(token)}\\b"
-            stack.append(("verse REGEXP ?", [pattern]))
-        elif token in ("+", ","):
-            op = "AND" if token == "+" else "OR"
-            right_expr, right_vals = stack.pop()
-            left_expr, left_vals = stack.pop()
-            combined_expr = f"({left_expr} {op} {right_expr})"
-            stack.append((combined_expr, left_vals + right_vals))
-    return stack[0] if stack else ("1=0", [])
+            stack.append(("verse REGEXP ?", [rf"\b{re.escape(token)}\b"]))
+            continue
+
+        if token not in {"+", ","} or len(stack) < 2:
+            raise ValueError("The Boolean search expression is incomplete.")
+
+        right_expression, right_values = stack.pop()
+        left_expression, left_values = stack.pop()
+        operator = "AND" if token == "+" else "OR"
+        stack.append(
+            (
+                f"({left_expression} {operator} {right_expression})",
+                left_values + right_values,
+            )
+        )
+
+    if len(stack) != 1:
+        return "1=0", []
+    return stack[0]
 
 
-def sql_row_gen(expression, version_name, case_sensitive=False, highlight_context=None):
-    """
-    Execute the SQL query for a given search expression and Bible version.
+def _reference_query(reference: dict[str, int | None]) -> tuple[str, list[int]]:
+    book_id = int(reference["book_id"])
+    chapter = int(reference["chapter"])
+    start_verse = reference["start_verse"]
+    end_verse = reference["end_verse"]
 
-    Args:
-        expression: the Boolean search expression (user input).
-        version_name: short name of the Bible version (e.g., "ESV").
-        case_sensitive: whether to perform a case-sensitive search.
-        highlight_context: optional mutable dict to return metadata (keywords, sql).
+    if start_verse is None:
+        return "Book = ? AND Chapter = ?", [book_id, chapter]
+    if start_verse == end_verse:
+        return "Book = ? AND Chapter = ? AND Versecount = ?", [
+            book_id,
+            chapter,
+            int(start_verse),
+        ]
+    return "Book = ? AND Chapter = ? AND Versecount BETWEEN ? AND ?", [
+        book_id,
+        chapter,
+        int(start_verse),
+        int(end_verse),
+    ]
 
-    Returns:
-        A list of result rows as dictionaries.
-    """
-    if highlight_context is None:
-        highlight_context = {}
-    
-    # 1. Check for verse reference first
-    ref_data = parse_verse_reference(expression)
-    if ref_data:
-        # It's a verse reference!
-        highlight_context["words"] = [] # No highlighting
-        book_id = ref_data["book_id"]
-        chapter = ref_data["chapter"]
-        start_verse = ref_data["start_verse"]
-        end_verse = ref_data["end_verse"]
-        
-        if start_verse is None:
-            # Whole chapter
-            where_clause = "Book = ? AND Chapter = ?"
-            values = [book_id, chapter]
-        elif start_verse == end_verse:
-            # Single verse
-            where_clause = "Book = ? AND Chapter = ? AND Versecount = ?"
-            values = [book_id, chapter, start_verse]
-        else:
-            # Range
-            where_clause = "Book = ? AND Chapter = ? AND Versecount >= ? AND Versecount <= ?"
-            values = [book_id, chapter, start_verse, end_verse]
 
-        sql_command = f"{sql_select} {where_clause} {sql_order}"
+def _search_expression(
+    expression: str,
+    version_name: str,
+    case_sensitive: bool,
+    highlight_context: dict[str, Any],
+) -> tuple[str, list[object]]:
+    reference = parse_verse_reference(expression)
+    if reference:
+        highlight_context["words"] = []
+        return _reference_query(reference)
 
-    # 2. Check correctly for RAW SQL (User edited SQL)
-    elif expression.strip().upper().startswith("SELECT "):
-        sys.stderr.write(f"DEBUG: Raw SQL detected: {expression}\n")
-    else:
-        # 2. Check Intent (LLM vs Keyword)
-        intent = detect_intent(expression)
-        sys.stderr.write(f"DEBUG: Query='{expression}', Intent='{intent}'\n")
-        
-        if intent == "LLM":
-            # Generate Boolean Expression via LLM
-            generated_expr, error = generate_search_expression(expression, version_name)
+    if expression.lstrip().upper().startswith("SELECT "):
+        raise ValueError("Raw SQL is not accepted. Use mBAB Boolean syntax instead.")
 
-            if error or not generated_expr:
-                # Fallback to standard keyword search if LLM fails
-                sys.stderr.write(f"DEBUG: LLM Error: {error}\n")
-                # Treat original expression as standard keyword search
-                tokens = tokenize_expr(expression)
-                postfix = to_postfix(tokens)
-                where_clause, values = build_sql_from_postfix(postfix, case_sensitive)
-                sql_command = f"{sql_select} {where_clause} {sql_order}"
-                highlight_context["words"] = [t for t in tokens if t.isalnum()]
-            else:
-                 sys.stderr.write(f"DEBUG: Generated Expression: {generated_expr}\n")
-                 
-                 # Store generated expression to show user
-                 highlight_context["generated_sql"] = generated_expr # Reusing existing key for frontend simplicity
+    clean_expression = re.sub(
+        r"^(key:|search:)\s*", "", expression, flags=re.IGNORECASE
+    ).strip()
+    evaluated_expression = clean_expression
 
-                 # Process the GENERATED expression as a standard search
-                 tokens = tokenize_expr(generated_expr)
-                 postfix = to_postfix(tokens)
-                 where_clause, values = build_sql_from_postfix(postfix, case_sensitive)
-                 sql_command = f"{sql_select} {where_clause} {sql_order}"
-                 highlight_context["words"] = [t for t in tokens if t.isalnum()]
+    if detect_intent(clean_expression) == "LLM":
+        generated_expression, error = generate_search_expression(
+            clean_expression, version_name
+        )
+        if generated_expression and not error:
+            evaluated_expression = generated_expression
+            highlight_context["generated_sql"] = generated_expression
+        elif error:
+            logger.info("LLM parsing unavailable; using the original query: %s", error)
 
-        else:
-            # 3. Standard Keyword Search
-            # Strip prefixes if present
-            expression = re.sub(r"^(key:|search:)\s*", "", expression, flags=re.IGNORECASE).strip()
-            
-            tokens = tokenize_expr(expression)
-            postfix = to_postfix(tokens)
-            where_clause, values = build_sql_from_postfix(postfix, case_sensitive)
-            sql_command = f"{sql_select} {where_clause} {sql_order}"
-            highlight_context["words"] = [t for t in tokens if t.isalnum()]
+    tokens = tokenize_expr(evaluated_expression)
+    postfix = to_postfix(tokens)
+    where_clause, values = build_sql_from_postfix(postfix, case_sensitive)
+    highlight_context["words"] = [token for token in tokens if token.isalnum()]
+    return where_clause, values
 
-    db = sqlite3.connect(f"./databases/{version_name}Bible_Database.db")
-    db.row_factory = dict_factory
-    
-    # Register REGEXP function to support the generated SQL
-    db.create_function("REGEXP", 2, lambda pattern, item: regexp_check(pattern, item, case_sensitive))
-    
-    cur = db.cursor()
 
-    if case_sensitive:
-        cur.execute("PRAGMA case_sensitive_like = true;")
+def sql_row_gen(
+    expression: str,
+    version_name: str,
+    case_sensitive: bool = False,
+    highlight_context: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Execute one safe Bible search and return dictionary rows."""
+    context = highlight_context if highlight_context is not None else {}
+    version = normalize_version(version_name)
+    where_clause, values = _search_expression(
+        expression, version, case_sensitive, context
+    )
+    sql_command = f"{sql_select} {where_clause} {sql_order}"
+    path = database_path(version)
+    if not path.is_file():
+        raise FileNotFoundError(f"The {version} Bible database is not installed.")
 
-    cur.execute(sql_command, values)
-    rows = cur.fetchall()
-    sys.stderr.write(f"DEBUG: SQL returned {len(rows)} rows.\n")
-    cur.close()
+    with sqlite3.connect(path) as database:
+        database.row_factory = dict_factory
+        database.create_function(
+            "REGEXP",
+            2,
+            lambda pattern, value: regexp_check(pattern, value, case_sensitive),
+        )
+        cursor = database.execute(sql_command, values)
+        return cursor.fetchall()
+
+
+def parse_book_mask(value: str | None) -> set[int]:
+    """Decode the 66-bit client book mask into book IDs."""
+    if not value:
+        return set(ALL_BOOK_IDS)
+    if not value.isdigit():
+        raise ValueError("The selected-book mask must be a non-negative integer.")
+    mask = int(value)
+    return {book_id for book_id in ALL_BOOK_IDS if mask & (1 << book_id)}
+
+
+def _highlight_parts(
+    verse: str, words: list[str], case_sensitive: bool
+) -> list[dict[str, str]]:
+    if not words:
+        return [{"text": verse}]
+
+    pattern = "|".join(rf"\b{re.escape(word)}\b" for word in words)
+    flags = 0 if case_sensitive else re.IGNORECASE
+    parts: list[dict[str, str]] = []
+    cursor = 0
+
+    for match in re.finditer(pattern, verse, flags=flags):
+        start, end = match.span()
+        if start > cursor:
+            parts.append({"text": verse[cursor:start]})
+        parts.append({"highlight": verse[start:end]})
+        cursor = end
+
+    if cursor < len(verse):
+        parts.append({"text": verse[cursor:]})
+    return parts or [{"text": verse}]
+
+
+def format_rows(
+    raw_rows: list[dict[str, Any]],
+    selected_book_ids: set[int],
+    highlight_words: list[str],
+    case_sensitive: bool,
+) -> list[dict[str, Any]]:
+    """Filter, label, and highlight raw database rows for the UI."""
+    rows: list[dict[str, Any]] = []
+    for row in sort_rows(raw_rows):
+        book_id = int(row["Book"])
+        if book_id not in selected_book_ids:
+            continue
+        rows.append(
+            {
+                "Book": BOOK_BY_ID[book_id]["text"],
+                "Chapter": row["Chapter"],
+                "Versecount": row["Versecount"],
+                "verse": _highlight_parts(
+                    str(row["verse"]), highlight_words, case_sensitive
+                ),
+            }
+        )
     return rows
+
+
+def run_search(
+    expression: str,
+    version_name: str,
+    case_sensitive: bool,
+    book_mask: str | None,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Run the shared search pipeline used by HTML and JSON responses."""
+    highlight_context: dict[str, Any] = {}
+    raw_rows = sql_row_gen(
+        expression,
+        version_name,
+        case_sensitive,
+        highlight_context,
+    )
+    rows = format_rows(
+        raw_rows,
+        parse_book_mask(book_mask),
+        highlight_context.get("words", []),
+        case_sensitive,
+    )
+    return rows, highlight_context.get("generated_sql")
 
 
 def build_context(
@@ -245,25 +340,7 @@ def build_context(
     keywords=None,
     generated_sql=None,
 ):
-    """
-    Build the Django template context dictionary for rendering results.
-
-    Args:
-        rows: list of search results (dicts).
-        version_name: short version identifier (e.g., "ESV").
-        version_exp: full name of the version.
-        version_wiki: link to the version's wiki page.
-        input_words: the original search expression.
-        selected_books: string of selected book numbers.
-        case_sensitive: whether search is case-sensitive.
-        keywords: optional list of words for highlighting.
-        generated_sql: optional generated SQL string for display.
-
-    Returns:
-        A dictionary suitable for rendering the template.
-    """
-    if keywords is None:
-        keywords = input_words.split()
+    """Build the context shared by the initial page and rendered results."""
     return {
         "testaments": testaments,
         "books": books,
@@ -274,7 +351,7 @@ def build_context(
         "version_exp": version_exp,
         "version_wiki": version_wiki,
         "case_sensitive": case_sensitive,
-        "keywords": keywords,
+        "keywords": keywords if keywords is not None else input_words.split(),
         "search": input_words,
         "selBooks": selected_books,
         "gtag_id": GTAG_ID,
@@ -283,256 +360,133 @@ def build_context(
 
 
 def db_refresh(request, *args, **kwargs):
-    """
-    Core dispatcher for handling search and filter logic.
-
-    Args:
-        request: Django request object.
-        kwargs may include:
-          - input_words: search query string
-          - version_name: short version name
-          - blank: whether to initialize empty context
-          - flip_case: toggle case sensitivity
-          - flip_book: book number to toggle
-          - flip_test: testament key to toggle (ot, nt, bib)
-
-    Returns:
-        HttpResponse rendered with `index.html` and appropriate context.
-    """
+    """Render the initial page or server-rendered search results."""
     blank = kwargs.get("blank", False)
-
     input_words = kwargs.get("input_words", "")
-    version_name = kwargs.get("version_name") or request.GET.get(
-        "version", versions[0]["name"]
+    version_name = normalize_version(
+        kwargs.get("version_name") or request.GET.get("version")
     )
     version_exp, version_wiki = find_version(version_name)
 
     if blank:
+        selected_books = " ".join(book["num"] for book in books)
         return render(
             request,
             "index.html",
             build_context(
-                rows=[],
-                version_name=version_name,
-                version_exp=version_exp,
-                version_wiki=version_wiki,
-                input_words=input_words,
-                selected_books=" ".join(book["num"] for book in books),
-                case_sensitive=False,
+                [],
+                version_name,
+                version_exp,
+                version_wiki,
+                input_words,
+                selected_books,
+                False,
             ),
         )
 
     case_sensitive = request.GET.get("case", "False") == "True"
-    books_param = request.GET.get("books", "")
-    selected_books = ""
+    book_mask = request.GET.get("books") or str(ALL_BOOK_MASK)
+    selected_ids = parse_book_mask(book_mask)
+    selected_books = " ".join(f"{book_id:02}" for book_id in sorted(selected_ids))
+    rows, generated_expression = run_search(
+        input_words, version_name, case_sensitive, book_mask
+    )
 
-    if books_param.isdigit():
-        bits = f"{int(books_param):066b}"[::-1]
-        selected_books = " ".join(f"{i:02}" for i, bit in enumerate(bits) if bit == "1")
-
-    highlight_context = {}
-    raw_rows = sort_rows(sql_row_gen(input_words, version_name, case_sensitive, highlight_context))
-    highlight_words = highlight_context.get("words", [])
-    generated_sql = highlight_context.get("generated_sql", None)
-
-    rows = []
-    for row in raw_rows:
-        if f"{row['Book']:02}" in selected_books:
-            book_text = next(b for b in books if b["id"] == row["Book"])["text"]
-            rows.append(
-                {
-                    "Book": book_text,
-                    "Chapter": row["Chapter"],
-                    "Versecount": row["Versecount"],
-                    "verse": row["verse"],
-                }
-            )
-
-    for row in rows:
-        if highlight_words:
-            regex = "|".join(f"\\b{re.escape(word)}\\b" for word in highlight_words)
-            verse_text = row["verse"]
-            matches = list(
-                re.finditer(
-                    regex, verse_text, flags=0 if case_sensitive else re.IGNORECASE
-                )
-            )
-
-            parts = []
-            last_idx = 0
-            for match in matches:
-                start, end = match.span()
-                if start > last_idx:
-                    parts.append({"text": verse_text[last_idx:start]})
-                parts.append({"highlight": verse_text[start:end]})
-                last_idx = end
-            if last_idx < len(verse_text):
-                parts.append({"text": verse_text[last_idx:]})
-
-            row["verse"] = parts
-        else:
-            row["verse"] = [{"text": row["verse"]}]
-
-    response = render(
+    return render(
         request,
         "index.html",
         build_context(
-            rows=rows,
-            version_name=version_name,
-            version_exp=version_exp,
-            version_wiki=version_wiki,
-            input_words=input_words,
-            selected_books=selected_books,
-            case_sensitive=case_sensitive,
-            keywords=highlight_words,
-            generated_sql=generated_sql,
+            rows,
+            version_name,
+            version_exp,
+            version_wiki,
+            input_words,
+            selected_books,
+            case_sensitive,
+            generated_sql=generated_expression,
         ),
     )
 
-    return response
-
 
 def search_ajax(request):
-    keyword = request.GET.get("search", "")
-    version = request.GET.get("version", "ESV")
-    case = request.GET.get("case", "False") == "True"
-    books_param = request.GET.get("books", "")
+    """Return highlighted search results for the interactive client."""
+    keyword = (request.GET.get("search") or request.GET.get("keyword") or "").strip()
+    if not keyword:
+        return JsonResponse({"error": "Enter a search query."}, status=400)
 
-    bits = f"{int(books_param):066b}"[::-1]
-    selected_books = " ".join(f"{i:02}" for i, bit in enumerate(bits) if bit == "1")
+    version = normalize_version(request.GET.get("version"))
+    case_sensitive = request.GET.get("case", "False") == "True"
+    book_mask = request.GET.get("books") or str(ALL_BOOK_MASK)
 
-    version_exp, version_wiki = find_version(version)
-    
-    highlight_context = {}
-    raw_rows = sort_rows(sql_row_gen(keyword, version, case, highlight_context))
-    highlight_words = highlight_context.get("words", [])
-    generated_sql = highlight_context.get("generated_sql", None)
+    try:
+        rows, generated_expression = run_search(
+            keyword, version, case_sensitive, book_mask
+        )
+    except ValueError as error:
+        return JsonResponse({"error": str(error)}, status=400)
+    except FileNotFoundError as error:
+        return JsonResponse({"error": str(error)}, status=503)
 
-    rows = []
-    for row in raw_rows:
-        if f"{row['Book']:02}" in selected_books:
-             book_text = next(b for b in books if b["id"] == row["Book"])["text"]
-             rows.append(
-                 {
-                     "Book": book_text,
-                     "Chapter": row["Chapter"],
-                     "Versecount": row["Versecount"],
-                     "verse": row["verse"],
-                 }
-             )
-
-    for row in rows:
-        if highlight_words:
-            regex = "|".join(f"\\b{re.escape(word)}\\b" for word in highlight_words)
-            verse_text = row["verse"]
-            matches = list(
-                re.finditer(regex, verse_text, flags=0 if case else re.IGNORECASE)
-            )
-            parts = []
-            last_idx = 0
-            for match in matches:
-                start, end = match.span()
-                if start > last_idx:
-                    parts.append({"text": verse_text[last_idx:start]})
-                parts.append({"highlight": verse_text[start:end]})
-                last_idx = end
-            if last_idx < len(verse_text):
-                parts.append({"text": verse_text[last_idx:]})
-            row["verse"] = parts
-        else:
-            row["verse"] = [{"text": row["verse"]}]
-
-    return JsonResponse({"results": rows, "generated_sql": generated_sql})
+    return JsonResponse({"results": rows, "generated_sql": generated_expression})
 
 
 def explain(request):
-    """
-    Generate an AI explanation for a specific verse.
-    GET params: ref (e.g. 'John 3:16'), text (verse content)
-    """
-    ref = request.GET.get("ref", "")
-    text = request.GET.get("text", "")
-    
-    if not ref or not text:
-        return JsonResponse({"error": "Missing reference or text"}, status=400)
-        
-    explanation, error = explain_verse(ref, text)
-    
+    """Generate a short AI explanation for one verse."""
+    reference = request.GET.get("ref", "").strip()
+    text = request.GET.get("text", "").strip()
+    if not reference or not text:
+        return JsonResponse({"error": "Missing reference or text."}, status=400)
+
+    explanation, error = explain_verse(reference, text)
     if error:
-        return JsonResponse({"error": error}, status=500)
-        
+        return JsonResponse({"error": error}, status=503)
     return JsonResponse({"explanation": explanation})
 
 
 def chapter_text(request):
-    """
-    Fetch the full text of a chapter.
-    GET params: book, chapter, version
-    """
-    book = request.GET.get("book")
-    chapter = request.GET.get("chapter")
-    version = request.GET.get("version", "ESV") # Default to ESV if not specified
-    
-    if not book or not chapter:
-        return JsonResponse({"error": "Missing book or chapter"}, status=400)
-    
-    # 1. Resolve Book ID
-    # Frontend sends "Genesis", DB needs 1
-    # We need to import get_book_id if not imported, or use lookup logic
-    # It is in .bibledata potentially not imported in views.py scope explicitly as a function?
-    # Checked imports: "from .bibledata import ( ... )" - need to add get_book_id to imports
-    # But for now, let's just use the books list which IS imported
-    book_id = None
-    for b in books:
-        if b["text"] == book:
-            book_id = b["id"]
-            break
-            
-    if book_id is None:
-         # Fallback: maybe it IS passed as ID?
-         if str(book).isdigit():
-             book_id = int(book)
-         else:
-             return JsonResponse({"error": f"Invalid book: {book}"}, status=400)
-
-    # 2. Resolve DB Path
-    # Each version has its own DB: matches {Version}Bible_Database.db pattern
-    valid_versions = ["ESV", "KJV", "ASV", "YLT", "WEB", "BBE", "DARBY", "WBT", "DRA", "NKJV", "NASB", "AMP", "RSV", "NIV"]
-    if version not in valid_versions:
-         version = "ESV"
-         
-    # Path is relative to project root usually
-    import os
-    db_path = os.path.join("databases", f"{version}Bible_Database.db")
-    
-    if not os.path.exists(db_path):
-         # Try backup or default
-         db_path = os.path.join("databases", "ESVBible_Database.db")
-
+    """Return the full text of one chapter in a supported edition."""
+    book_name = request.GET.get("book", "").strip()
+    version = normalize_version(request.GET.get("version"))
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        # 3. Query (Schema: Book INT, Chapter INT, Versecount INT, verse TEXT)
-        query = "SELECT Versecount, verse as text FROM bible WHERE Book = ? AND Chapter = ? ORDER BY Versecount ASC"
-        cursor.execute(query, (book_id, chapter))
-        rows = cursor.fetchall()
-        
-        verses = []
-        for row in rows:
-            verses.append({
-                "verse": row["Versecount"],
-                "text": row["text"]
-            })
-            
-        conn.close()
-            
-        return JsonResponse({
-            "book": book,
+        chapter = int(request.GET.get("chapter", ""))
+    except ValueError:
+        return JsonResponse(
+            {"error": "Chapter must be a positive integer."}, status=400
+        )
+
+    if chapter < 1:
+        return JsonResponse(
+            {"error": "Chapter must be a positive integer."}, status=400
+        )
+
+    book = next(
+        (item for item in books if item["text"].casefold() == book_name.casefold()),
+        None,
+    )
+    if book is None:
+        return JsonResponse({"error": f"Unknown book: {book_name}"}, status=400)
+
+    path = database_path(version)
+    if not path.is_file():
+        return JsonResponse(
+            {"error": f"The {version} Bible database is not installed."}, status=503
+        )
+
+    with sqlite3.connect(path) as database:
+        database.row_factory = sqlite3.Row
+        rows = database.execute(
+            "SELECT Versecount, verse AS text FROM bible "
+            "WHERE Book = ? AND Chapter = ? ORDER BY Versecount",
+            (book["id"], chapter),
+        ).fetchall()
+
+    return JsonResponse(
+        {
+            "book": book["text"],
             "chapter": chapter,
             "version": version,
-            "verses": verses
-        })
-    except Exception as e:
-         return JsonResponse({"error": str(e)}, status=500)
+            "verses": [
+                {"verse": row["Versecount"], "text": row["text"]} for row in rows
+            ],
+        }
+    )
