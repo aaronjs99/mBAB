@@ -1,4 +1,4 @@
-"""Optional language-model helpers for natural-language Bible searches."""
+"""Optional AI adapters for natural-language search and verse explanation."""
 
 from __future__ import annotations
 
@@ -11,12 +11,12 @@ from django.conf import settings
 
 try:
     from openai import OpenAI
-except ImportError:  # pragma: no cover - depends on optional runtime packages
+except ImportError:  # pragma: no cover - optional runtime dependency
     OpenAI = None
 
 try:
     from groq import Groq
-except ImportError:  # pragma: no cover - depends on optional runtime packages
+except ImportError:  # pragma: no cover - optional runtime dependency
     Groq = None
 
 
@@ -30,7 +30,7 @@ MODEL_BY_PROVIDER = {
 
 @lru_cache(maxsize=1)
 def get_llm_client():
-    """Return the first available local or hosted language-model client."""
+    """Return the first configured local or hosted language-model client."""
     if OpenAI:
         try:
             request = urllib.request.Request(
@@ -42,8 +42,7 @@ def get_llm_client():
                 if response.status == 200:
                     return (
                         OpenAI(
-                            base_url="http://localhost:11434/v1",
-                            api_key="ollama",
+                            base_url="http://localhost:11434/v1", api_key="ollama"
                         ),
                         "ollama",
                     )
@@ -65,22 +64,6 @@ def get_llm_client():
     return None, None
 
 
-def detect_intent(query: str) -> str:
-    """Classify a query as explicit Boolean syntax or natural language."""
-    normalized = query.strip()
-    lowered = normalized.casefold()
-
-    if lowered.startswith(("sql:", "ask:")):
-        return "LLM"
-    if lowered.startswith(("key:", "search:")):
-        return "STANDARD"
-    if re.search(r"[+,()]", normalized):
-        return "STANDARD"
-    if re.search(r"^\d*\s*[a-zA-Z]+\s+\d+(?::\d+)?(?:-\d+)?$", normalized):
-        return "STANDARD"
-    return "LLM"
-
-
 def _completion(client, provider, messages, *, temperature: float, max_tokens: int):
     return client.chat.completions.create(
         model=MODEL_BY_PROVIDER[provider],
@@ -91,7 +74,6 @@ def _completion(client, provider, messages, *, temperature: float, max_tokens: i
 
 
 def _clean_expression(value: str) -> str:
-    """Remove markdown and conversational preambles from a model response."""
     lines = [line.strip() for line in value.replace("```", "").splitlines()]
     candidates = [
         line
@@ -103,9 +85,9 @@ def _clean_expression(value: str) -> str:
     return candidates[-1] if candidates else ""
 
 
-def generate_search_expression(query: str, version_name: str = "KJV"):
+def generate_search_expression(query: str, version: str = "KJV"):
     """Convert natural language into mBAB's compact Boolean syntax."""
-    del version_name  # Reserved for future edition-aware parsing.
+    del version  # Reserved for future edition-aware parsing.
     client, provider = get_llm_client()
     if not client or not provider:
         return None, "No LLM available."
@@ -121,7 +103,6 @@ def generate_search_expression(query: str, version_name: str = "KJV"):
         "'synonyms for love' -> (love, affection, charity, devotion); "
         "'show me scriptures on light' -> light."
     )
-
     try:
         response = _completion(
             client,
@@ -134,7 +115,7 @@ def generate_search_expression(query: str, version_name: str = "KJV"):
             max_tokens=60,
         )
         expression = _clean_expression(response.choices[0].message.content or "")
-    except Exception as error:  # External SDKs expose provider-specific exceptions.
+    except Exception as error:  # Provider SDKs expose distinct exception types.
         return None, f"LLM error ({provider}): {error}"
 
     if not expression:
@@ -142,21 +123,11 @@ def generate_search_expression(query: str, version_name: str = "KJV"):
     return expression, None
 
 
-def validate_and_sanitize_sql(sql: str) -> bool:
-    """Retain a conservative guard for legacy read-only SQL integrations."""
-    if not sql or not sql.lstrip().upper().startswith("SELECT "):
-        return False
-    return not re.search(
-        r"\b(DROP|DELETE|UPDATE|INSERT|ALTER|TRUNCATE)\b|;", sql, re.IGNORECASE
-    )
-
-
 def explain_verse(reference: str, text: str):
-    """Generate a concise explanation of one verse when an LLM is configured."""
+    """Generate a concise explanation when an AI provider is configured."""
     client, provider = get_llm_client()
     if not client or not provider:
         return None, "No LLM available."
-
     try:
         response = _completion(
             client,
@@ -175,5 +146,5 @@ def explain_verse(reference: str, text: str):
             max_tokens=150,
         )
         return response.choices[0].message.content.strip(), None
-    except Exception as error:  # External SDKs expose provider-specific exceptions.
+    except Exception as error:  # Provider SDKs expose distinct exception types.
         return None, f"LLM error ({provider}): {error}"

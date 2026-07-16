@@ -17,13 +17,16 @@ Requires Node.js 22.13 or newer.
 
 ```bash
 npm ci
+npm run build:legacy-css
 npm run dev
-npm run build
+npm test
 npx tsc --noEmit
 npm run lint
-node --test tests/rendered-html.test.mjs
+npm audit --audit-level=high
 ```
 
 The legacy Django application remains at the repository root. This directory is
-the deployable ChatGPT Sites application and contains its own hosting metadata.
-
+the Sites application and contains its own hosting metadata. Both frontends import
+their edition and book metadata from the repository-level `contracts/search.json`.
+The same Node toolchain compiles the tracked Django stylesheet, keeping the legacy
+host free of browser-time CSS build dependencies.

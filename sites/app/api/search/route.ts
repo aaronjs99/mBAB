@@ -1,18 +1,13 @@
-import { BOOKS, VERSIONS, bookMask, type SearchMode } from "@/app/search-config";
+import { VERSIONS, bookMask } from "@/app/search/catalog";
+import { expressionFor, flattenVerse, parseBookIds, parseReference } from "@/app/search/query";
+import { fetchReferenceVerses } from "@/app/search/reference-source";
+import type { LegacyRow, SearchMode, SearchResult } from "@/app/search/types";
 
 export const runtime = "edge";
 
 const LEGACY_SEARCH_URL = "https://aaronjs.pythonanywhere.com/ajax/search/";
 const MAX_QUERY_LENGTH = 120;
 const MAX_PAGE_SIZE = 30;
-
-type LegacyPart = { text?: string; highlight?: string };
-type LegacyRow = {
-  Book: string;
-  Chapter: number;
-  Versecount: number;
-  verse: LegacyPart[] | string;
-};
 
 function json(body: unknown, status = 200, cache = false) {
   return Response.json(body, {
@@ -27,62 +22,27 @@ function json(body: unknown, status = 200, cache = false) {
   });
 }
 
-function words(input: string): string[] {
-  return input.match(/[A-Za-z0-9_]+/g)?.slice(0, 12) ?? [];
-}
-
-function validateAdvanced(input: string): string | null {
-  if (!/^[A-Za-z0-9_(),+\s]+$/.test(input)) {
-    return "Advanced search accepts words, parentheses, +, and commas only.";
-  }
-
-  const tokens = input.match(/[A-Za-z0-9_]+|[(),+]/g) ?? [];
-  if (!tokens.length) return "Enter at least one search word.";
-
-  let depth = 0;
-  let expectsWord = true;
-  for (const token of tokens) {
-    if (/^[A-Za-z0-9_]+$/.test(token)) {
-      if (!expectsWord) return "Add + or a comma between adjacent words.";
-      expectsWord = false;
-    } else if (token === "(") {
-      if (!expectsWord) return "Add an operator before an opening parenthesis.";
-      depth += 1;
-    } else if (token === ")") {
-      if (expectsWord || depth === 0) return "Check the placement of your parentheses.";
-      depth -= 1;
-    } else {
-      if (expectsWord) return "An operator needs a word on both sides.";
-      expectsWord = true;
-    }
-  }
-
-  if (expectsWord) return "Finish the search with a word, not an operator.";
-  if (depth !== 0) return "Close every parenthesis before searching.";
-  return null;
-}
-
-function expressionFor(query: string, mode: SearchMode): { expression?: string; error?: string } {
-  if (mode === "advanced") {
-    const error = validateAdvanced(query);
-    return error ? { error } : { expression: query.replace(/\s+/g, "") };
-  }
-
-  const tokens = words(query);
-  if (!tokens.length) return { error: "Enter at least one search word." };
-  return { expression: tokens.join(mode === "all" ? "+" : ",") };
-}
-
-function parseBooks(value: string | null): number[] | null {
-  if (!value) return BOOKS.map((book) => book.id);
-  const ids = [...new Set(value.split(",").map(Number))];
-  if (!ids.length || ids.some((id) => !Number.isInteger(id) || id < 0 || id > 65)) return null;
-  return ids.sort((a, b) => a - b);
-}
-
-function flattenVerse(verse: LegacyPart[] | string): string {
-  if (typeof verse === "string") return verse;
-  return verse.map((part) => part.text ?? part.highlight ?? "").join("");
+function paginatedResponse(
+  allResults: SearchResult[],
+  page: number,
+  pageSize: number,
+  expression: string,
+  selectedBookCount: number,
+) {
+  const total = allResults.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * pageSize;
+  return {
+    results: allResults.slice(start, start + pageSize),
+    total,
+    page: safePage,
+    pageSize,
+    totalPages,
+    expression,
+    selectedBookCount,
+    source: "mBAB open-text corpus",
+  };
 }
 
 export async function GET(request: Request) {
@@ -90,7 +50,7 @@ export async function GET(request: Request) {
   const query = (url.searchParams.get("q") ?? "").trim();
   const mode = (url.searchParams.get("mode") ?? "all") as SearchMode;
   const version = (url.searchParams.get("version") ?? "KJV").toUpperCase();
-  const selectedBooks = parseBooks(url.searchParams.get("books"));
+  const selectedBooks = parseBookIds(url.searchParams.get("books"));
   const caseSensitive = url.searchParams.get("case") === "true";
   const page = Math.max(1, Number.parseInt(url.searchParams.get("page") ?? "1", 10) || 1);
   const pageSize = Math.min(
@@ -106,6 +66,44 @@ export async function GET(request: Request) {
 
   const built = expressionFor(query, mode);
   if (built.error || !built.expression) return json({ error: built.error }, 400);
+
+  const reference = parseReference(query);
+  if (reference) {
+    try {
+      const verses = await fetchReferenceVerses(reference, version);
+      const inScope = selectedBooks.includes(reference.bookId);
+      const allResults = inScope
+        ? verses
+          .filter((item) => reference.startVerse === undefined
+            || (item.verse >= reference.startVerse
+              && item.verse <= (reference.endVerse ?? reference.startVerse)))
+          .map((item) => ({
+            ref: `${reference.book} ${reference.chapter}:${item.verse}`,
+            book: reference.book,
+            chapter: reference.chapter,
+            verse: Number(item.verse),
+            text: item.text,
+            version,
+          }))
+        : [];
+      return json(
+        paginatedResponse(
+          allResults,
+          page,
+          pageSize,
+          built.expression,
+          selectedBooks.length,
+        ),
+        200,
+        true,
+      );
+    } catch {
+      return json(
+        { error: "The verse index is taking longer than expected. Please try again in a moment." },
+        503,
+      );
+    }
+  }
 
   const legacyUrl = new URL(LEGACY_SEARCH_URL);
   legacyUrl.searchParams.set("search", built.expression);
@@ -130,22 +128,14 @@ export async function GET(request: Request) {
       text: flattenVerse(row.verse),
       version,
     }));
-    const total = allResults.length;
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-    const safePage = Math.min(page, totalPages);
-    const start = (safePage - 1) * pageSize;
-
     return json(
-      {
-        results: allResults.slice(start, start + pageSize),
-        total,
-        page: safePage,
+      paginatedResponse(
+        allResults,
+        page,
         pageSize,
-        totalPages,
-        expression: built.expression,
-        selectedBookCount: selectedBooks.length,
-        source: "mBAB open-text corpus",
-      },
+        built.expression,
+        selectedBooks.length,
+      ),
       200,
       true,
     );

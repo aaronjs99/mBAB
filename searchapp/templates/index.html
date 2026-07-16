@@ -6,34 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Multi-Book Advanced Bible Search</title>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              slate: {
-                850: '#151e2e',
-                950: '#020617',
-              },
-              indigo: {
-                450: '#818cf8', // softer indigo
-                550: '#6366f1',
-              }
-            },
-            fontFamily: {
-              sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-              serif: ['Merriweather', 'ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif'],
-            }
-          }
-        }
-      };
-      
-      // Init Font Size
-      document.documentElement.style.fontSize = '16px'; 
-    </script>
     <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap" rel="stylesheet">
 
@@ -46,14 +18,14 @@
     <!-- HEADER -->
     <header class="h-16 flex-none bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 sm:px-6 z-30 shadow-sm relative">
       <div class="flex items-center gap-3">
-        <div onclick="toggleSidebar()" class="p-2 -ml-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-500 dark:text-slate-400">
+        <button type="button" data-action="toggle-sidebar" aria-label="Toggle filters" class="p-2 -ml-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-slate-500 dark:text-slate-400">
              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-        </div>
-        <div onclick="window.location.href='/'" class="flex flex-col cursor-pointer group">
+        </button>
+        <button type="button" data-action="home" class="flex flex-col cursor-pointer group">
           <h1 class="text-xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-500 transition-colors">
             mBAB <span class="hidden sm:inline text-slate-800 dark:text-slate-200 font-semibold">Search</span>
           </h1>
-        </div>
+        </button>
       </div>
 
       <div class="flex items-center gap-2 sm:gap-4">
@@ -73,13 +45,13 @@
 
         <!-- Font Size -->
         <div class="hidden sm:flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 mr-2">
-            <button onclick="changeFontSize(-10)" class="px-2 text-xs font-bold text-slate-500 hover:text-indigo-600">A-</button>
+            <button type="button" data-action="font" data-delta="-10" class="px-2 text-xs font-bold text-slate-500 hover:text-indigo-600">A-</button>
             <span id="fontDisplay" class="text-[10px] text-slate-400 w-8 text-center">100%</span>
-            <button onclick="changeFontSize(10)" class="px-2 text-xs font-bold text-slate-500 hover:text-indigo-600">A+</button>
+            <button type="button" data-action="font" data-delta="10" class="px-2 text-xs font-bold text-slate-500 hover:text-indigo-600">A+</button>
         </div>
 
         <!-- Theme Toggle -->
-        <button id="themeToggleBtn" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors" title="Toggle Theme">
+        <button type="button" id="themeToggleBtn" data-action="toggle-theme" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors" title="Toggle theme">
           <!-- Sun Icon -->
           <svg id="sunIcon" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
           <!-- Moon Icon -->
@@ -87,7 +59,7 @@
         </button>
 
         <!-- Demo Button -->
-        <button onclick="openDemoModal()" class="text-sm font-medium px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
+        <button type="button" data-action="open-demo" class="text-sm font-medium px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
            Read Me
         </button>
       </div>
@@ -99,17 +71,17 @@
       <aside id="sidebar" class="absolute md:relative z-20 w-80 h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform -translate-x-full md:translate-x-0 transition-transform duration-300 flex flex-col shadow-xl md:shadow-none">
         <div class="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center md:hidden">
           <span class="font-bold text-slate-700 dark:text-slate-200">Filters</span>
-          <button onclick="toggleSidebar()" class="text-slate-400 hover:text-slate-600">&times;</button>
+          <button type="button" data-action="toggle-sidebar" aria-label="Close filters" class="text-slate-400 hover:text-slate-600">&times;</button>
         </div>
 
         <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
-           <form id="searchForm" onsubmit="event.preventDefault(); triggerSearch();"> <!-- Prevent default, handle manually -->
+           <form id="searchForm">
               
               <!-- Settings Group -->
               <div class="space-y-3">
                  <div class="flex items-center justify-between">
                     <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Settings</h3>
-                    <button type="button" onclick="resetFilters()" class="text-xs text-red-500 hover:text-red-600 font-medium">Reset</button>
+                    <button type="button" data-action="reset" class="text-xs text-red-500 hover:text-red-600 font-medium">Reset</button>
                  </div>
 
                  <!-- Version -->
@@ -117,7 +89,7 @@
                     <label class="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Version</label>
                     <select name="version" id="versionSelect" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
                       {% for v in versions %}
-                       <option value="{{ v.name }}" {% if v.name == version_name %}selected{% endif %}>{{ v.name }} - {{ v.expansion }}</option>
+                       <option value="{{ v.id }}" {% if v.id == version_name %}selected{% endif %}>{{ v.id }} - {{ v.label }}</option>
                       {% endfor %}
                     </select>
                  </div>
@@ -149,32 +121,32 @@
                  
                  <!-- Quick Selects -->
                  <div class="grid grid-cols-3 gap-2 mb-4">
-                    <button type="button" onclick="toggleTestament('ot')" class="px-2 py-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 transition-colors">Old Test.</button>
-                    <button type="button" onclick="toggleTestament('nt')" class="px-2 py-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 transition-colors">New Test.</button>
-                    <button type="button" onclick="toggleTestament('bib')" class="px-2 py-1.5 text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded transition-colors">All</button>
+                    <button type="button" data-action="toggle-testament" data-testament="ot" class="px-2 py-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 transition-colors">Old Test.</button>
+                    <button type="button" data-action="toggle-testament" data-testament="nt" class="px-2 py-1.5 text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-600 dark:text-slate-300 transition-colors">New Test.</button>
+                    <button type="button" data-action="toggle-testament" data-testament="bib" class="px-2 py-1.5 text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded transition-colors">All</button>
                  </div>
 
                  <!-- Book List -->
                  <div class="space-y-4">
                     {% for testament in testaments %}
-                      {% for section_name, book_ids in book_sections.items %}
-                        {% if book_ids.0 < 39 and testament == 'Old Testament' or book_ids.0 >= 39 and book_ids.0 < 66 and testament == 'New Testament' %}
+                      {% for section in book_sections %}
+                        {% if section.testament == testament %}
                           <div class="space-y-2">
-                             <div class="flex items-center justify-between group" data-section-ids="[{{ book_ids|join:',' }}]">
-                                <span class="text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 transition-colors cursor-pointer" onclick="selectOnlySection([{{ book_ids|join:',' }}])">{{ section_name }}</span>
+                             <div class="flex items-center justify-between group" data-section-ids="[{{ section.book_ids|join:',' }}]">
+                                <button type="button" data-action="only-section" data-ids="[{{ section.book_ids|join:',' }}]" class="text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 transition-colors cursor-pointer">{{ section.name }}</button>
                                 <div class="flex gap-2">
-                                   <span class="section-toggle-text text-[10px] text-slate-300 hover:text-indigo-300 cursor-pointer" onclick="toggleSection([{{ book_ids|join:',' }}])">Select All</span>
-                                   <span class="text-[10px] text-slate-300 hover:text-rose-400 cursor-pointer" onclick="selectOnlySection([{{ book_ids|join:',' }}])">Only</span>
+                                   <button type="button" data-action="toggle-section" data-ids="[{{ section.book_ids|join:',' }}]" class="section-toggle-text text-[10px] text-slate-300 hover:text-indigo-300 cursor-pointer">Select All</button>
+                                   <button type="button" data-action="only-section" data-ids="[{{ section.book_ids|join:',' }}]" class="text-[10px] text-slate-300 hover:text-rose-400 cursor-pointer">Only</button>
                                 </div>
                              </div>
                              <div class="grid grid-cols-3 gap-1">
                                 {% for book in books %}
-                                  {% if book.id in book_ids and book.testament == testament %}
+                                  {% if book.id in section.book_ids %}
                                     <button type="button"
                                             data-book-id="{{ book.id }}"
-                                            onclick="toggleBook({{ book.id }})"
-                                            class="toggle-book text-[10px] py-1 px-1 rounded truncate w-full text-center {% if book.num in selBooks %}selected{% else %}deselected{% endif %}">
-                                      {{ book.text }}
+                                            data-action="toggle-book"
+                                            class="toggle-book text-[10px] py-1 px-1 rounded truncate w-full text-center {% if book.number in selBooks %}selected{% else %}deselected{% endif %}">
+                                      {{ book.name }}
                                     </button>
                                   {% endif %}
                                 {% endfor %}
@@ -206,11 +178,8 @@
                     placeholder="Search (Press '/' to focus)..." 
                     class="w-full pl-5 pr-12 py-3 sm:py-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-slate-400"
                     autocomplete="off"
-                    onkeydown="if(event.key === 'Enter') triggerSearch()"
-                    onfocus="showHistory()"
-                    onblur="setTimeout(hideHistory, 200)" 
                  >
-                 <button onclick="triggerSearch()" class="absolute right-2 top-2 bottom-2 aspect-square bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center transition-colors shadow-sm group-focus-within:bg-indigo-500">
+                 <button type="button" data-action="search" aria-label="Search" class="absolute right-2 top-2 bottom-2 aspect-square bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center transition-colors shadow-sm group-focus-within:bg-indigo-500">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                  </button>
                  
@@ -218,7 +187,7 @@
                  <div id="historyDropdown" class="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 hidden overflow-hidden">
                     <div class="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 flex justify-between">
                        <span>Recent Searches</span>
-                       <button onmousedown="clearHistory()" class="text-red-500 hover:text-red-700">Clear</button>
+                       <button type="button" data-action="clear-history" class="text-red-500 hover:text-red-700">Clear</button>
                     </div>
                     <div id="historyList" class="max-h-60 overflow-y-auto">
                        <!-- Items injected here -->
@@ -234,7 +203,7 @@
                           <textarea id="sqlInput" rows="1" class="w-full bg-white dark:bg-slate-950 border border-indigo-100 dark:border-slate-700 rounded px-3 py-2 font-mono text-sm text-slate-700 dark:text-slate-300 focus:ring-1 focus:ring-indigo-500 resize-none" spellcheck="false"></textarea>
                           <p class="text-[10px] text-slate-400 mt-1 italic">Note: AI generated logic can make mistakes. Review before running.</p>
                       </div>
-                      <button onclick="runCustomSQL()" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm whitespace-nowrap transition-colors self-end sm:self-center">
+                      <button type="button" data-action="run-expression" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm whitespace-nowrap transition-colors self-end sm:self-center">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                           Run
                       </button>
@@ -285,11 +254,11 @@
     </div>
 
     <!-- Demo Modal (Simplified) -->
-    <div id="demoModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="if(event.target === this) closeDemoModal()">
+    <div id="demoModal" data-dismiss="demoModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
        <div class="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
           <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
              <h2 class="text-xl font-bold font-serif text-slate-800 dark:text-slate-100">Search Guide</h2>
-             <button onclick="closeDemoModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-2xl leading-none">&times;</button>
+             <button type="button" data-action="close-demo" aria-label="Close search guide" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-2xl leading-none">&times;</button>
           </div>
           <div class="p-6 overflow-y-auto prose dark:prose-invert max-w-none text-sm">
              <p class="lead">Search using keywords, natural language questions, or boolean logic.</p>
@@ -335,22 +304,21 @@
                   </div>
              </div>
              </div>
-          </div>
           <div class="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 text-right">
-             <button onclick="closeDemoModal()" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors">Got it</button>
+             <button type="button" data-action="close-demo" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors">Got it</button>
           </div>
        </div>
     </div>
 
     <!-- Feature Modal (Dynamic) -->
-    <div id="featureModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="if(event.target === this) closeFeatureModal()">
+    <div id="featureModal" data-dismiss="featureModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
        <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col transform transition-all scale-100">
           <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
              <div class="flex items-center gap-3">
                  <div id="modalIcon" class="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg"></div>
                  <h2 id="modalTitle" class="text-lg font-bold font-serif text-slate-800 dark:text-slate-100"></h2>
              </div>
-             <button onclick="closeFeatureModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">&times;</button>
+             <button type="button" data-action="close-feature" aria-label="Close dialog" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">&times;</button>
           </div>
           <div id="modalContent" class="p-6 overflow-y-auto">
              <!-- Content injected via JS -->
@@ -362,6 +330,6 @@
     <div id="toastContainer" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- JAVASCRIPT LOGIC -->
-    <script src="{% static 'searchapp/scripts/search.js' %}" defer></script>
+    <script type="module" src="{% static 'searchapp/scripts/search/app.js' %}"></script>
   </body>
 </html>

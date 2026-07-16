@@ -74,17 +74,18 @@ Run the setup script on first deployment and whenever the database repository ch
 
 ## 2. OpenAI Sites
 
-The deployable Sites application lives entirely in `sites/`. Its persistent project identifier is stored in `sites/.openai/hosting.json`; hosted access policy and deployment versions are managed by Sites.
+The Sites application lives in `sites/` and imports the canonical catalog from `contracts/search.json`. Its persistent project identifier is stored in `sites/.openai/hosting.json`; hosted access policy and deployment versions are managed by Sites. Publish from the full repository so the exact validated contract and frontend source stay together.
 
 Validate locally before publishing:
 
 ```bash
 cd sites
 npm ci
-npm run build
+npm run build:legacy-css
+npm test
 npx tsc --noEmit
 npm run lint
-node --test tests/rendered-html.test.mjs
+npm audit --audit-level=high
 ```
 
 The public production URL is:

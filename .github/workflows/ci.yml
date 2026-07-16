@@ -36,8 +36,10 @@ jobs:
           cache: npm
           cache-dependency-path: sites/package-lock.json
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: node --check ../searchapp/static/searchapp/scripts/search.js
+      - run: find ../searchapp/static/searchapp/scripts/search -name '*.js' -print0 | xargs -0 -n1 node --check
+      - run: npm run build:legacy-css && git diff --exit-code -- ../searchapp/static/searchapp/stylesheets/styles.css
+      - run: npm audit --audit-level=high
       - run: npm run build
       - run: npx tsc --noEmit
       - run: npm run lint
-      - run: node --test tests/rendered-html.test.mjs
+      - run: node --test tests/*.test.mjs

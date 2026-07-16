@@ -20,12 +20,21 @@ mBAB is a focused Scripture search engine for combining words, controlling Boole
 
 ```text
 mBAB/
+├── contracts/             # Canonical books, editions, groups, and search modes
 ├── mBAB/                  # Django project settings and root routes
 ├── searchapp/             # PythonAnywhere/Django search application
-│   ├── static/            # Django images and static assets
-│   └── templates/         # Django HTML templates
+│   ├── catalog.py         # Typed access to the shared search contract
+│   ├── query.py           # Pure reference and Boolean query compiler
+│   ├── repository.py      # SQLite Bible text access
+│   ├── search.py          # Search orchestration and result formatting
+│   ├── ai.py              # Optional language-model adapters
+│   ├── static/            # Modular browser client and static assets
+│   ├── templates/         # Django HTML templates
+│   └── tests/             # Tests grouped by application concern
 ├── sites/                 # Public Sites application and hosting metadata
-│   ├── app/               # Search UI and API route
+│   ├── app/search/        # Shared Sites domain logic and types
+│   ├── app/components/    # Focused search interface components
+│   ├── app/api/           # Validated bridge to the corpus
 │   ├── public/            # Social preview assets
 │   ├── tests/             # Render and API smoke tests
 │   └── worker/            # Cloudflare-compatible worker entrypoint
@@ -71,6 +80,15 @@ python manage.py test
 python -m compileall -q mBAB searchapp
 ```
 
+The Django interface ships a compiled Tailwind stylesheet, so PythonAnywhere
+never depends on Tailwind's browser CDN. When template or browser-module classes
+change, rebuild that tracked stylesheet from the Sites toolchain:
+
+```bash
+cd sites
+npm run build:legacy-css
+```
+
 ## Sites development
 
 Requires Node.js 22.13 or newer.
@@ -84,10 +102,10 @@ npm run dev
 Run the full Sites validation suite with:
 
 ```bash
-npm run build
+npm test
 npx tsc --noEmit
 npm run lint
-node --test tests/rendered-html.test.mjs
+npm audit --audit-level=high
 ```
 
 ## Configuration
@@ -104,7 +122,7 @@ Copy `.env.example` to an untracked `.env` file or provide the same values throu
 | `DEEPSEEK_API_KEY` | Optional DeepSeek natural-language features |
 | `OPENAI_API_KEY` | Optional OpenAI natural-language features |
 
-Without an LLM key or local Ollama server, exact reference and Boolean search still work normally.
+Without an LLM key or local Ollama server, mBAB uses deterministic keyword parsing, so reference, keyword, and Boolean search all remain available.
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for the production workflow.
 
