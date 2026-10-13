@@ -9,6 +9,7 @@ The Sites-native frontend for **mBAB — Multi-Book Advanced Bible Search**.
 - public-domain/open-text editions exposed by default
 - server-side query handling, safe rendering, pagination, and shareable queries
 - accessible responsive interface, dark mode, and device-local saved verses
+- chapter reading and verse-aligned edition comparison from results or saved verses
 - guarded server bridge to the existing mBAB search corpus
 
 ## Development
@@ -54,10 +55,32 @@ The interface uses system fonts and a local SVG favicon, so Windows previews do
 not depend on generated font file URLs. Social previews retain the existing local
 `public/og.png` card.
 
+## Read in context
+
+Each result and saved verse opens a chapter reader without changing the search URL,
+form, results, or page. It starts with the selected verse and two verses on either
+side. “Read full chapter” expands the text; the selected verse stays marked.
+Choose another edition to compare wording by verse number. Missing verses are
+identified explicitly. Comparison failures have their own retry and leave the
+original text available. Close or Escape returns focus to the original control.
+
+The thin `/api/chapter` route validates the shared catalog and chapter coordinates.
+It reuses the reference providers and checks text shape and source identity.
+`app/search/use-chapter-reader.ts` owns independent requests, cancellation and retry;
+`ChapterReader` receives explicit props. Closing the reader cancels its requests,
+and late responses cannot replace a newer edition. Source failures are errors;
+an empty chapter receives a distinct response.
+
+Advanced search accepts `AND` and `OR` between operands, including grouped
+expressions such as `(love OR mercy)+grace`. Use symbols to search those words
+literally: `love+and` requires both “love” and “and”. Single `and` or `or` searches
+also remain literal. All-word and any-word modes treat every entered word as text.
+Highlighting uses the compiled expression, so textual operators are not highlighted.
+
 ## Verification
 
 ```bash
-npm test                  # Domain, storage, highlighting, and reference routing
+npm test                  # Build, domain, storage, chapter, and rendered-page checks
 npm run test:unit         # Fast domain checks during development
 npm run typecheck
 npm run lint

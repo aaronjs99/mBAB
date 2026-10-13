@@ -33,3 +33,9 @@ test("the built API validates searches and resolves excluded references without 
   assert.equal(response.status, 200);
   assert.equal((await response.json()).total, 0);
 });
+
+test("the built chapter reader rejects invalid coordinates and unsupported editions", async () => {
+  for (const params of ["", "book=Unknown&chapter=3", "book=John&chapter=3oops", "book=John&chapter=3&version=NIV"]) {
+    assert.equal((await request(`/api/chapter?${params}`)).status, 400, params);
+  }
+});

@@ -15,10 +15,11 @@ type Props = {
   onCopy: (value: string, success: string) => void;
   onShare: () => void;
   onToggleSaved: (result: SearchResult) => void;
+  onRead: (result: SearchResult) => void;
   onPage: (page: number) => void;
 };
 
-export function SearchResults({ response, query, mode, caseSensitive, draftChanged, edition, saved, loading, onCopy, onShare, onToggleSaved, onPage }: Props) {
+export function SearchResults({ response, query, mode, caseSensitive, draftChanged, edition, saved, loading, onCopy, onShare, onToggleSaved, onRead, onPage }: Props) {
   const first = (response.page - 1) * response.pageSize + (response.total ? 1 : 0);
   const last = Math.min(response.page * response.pageSize, response.total);
   const resultLabel = response.total === 1 ? "verse" : "verses";
@@ -44,8 +45,9 @@ export function SearchResults({ response, query, mode, caseSensitive, draftChang
                   <div className="result-number" aria-hidden="true">{String(index + 1 + (response.page - 1) * response.pageSize).padStart(2, "0")}</div>
                   <div className="result-content">
                     <p className="result-ref">{result.ref} <span>{result.version}</span></p>
-                    <blockquote><HighlightedText text={result.text} query={query} caseSensitive={caseSensitive} /></blockquote>
+                    <blockquote><HighlightedText text={result.text} query={response.expression} caseSensitive={caseSensitive} /></blockquote>
                     <div className="result-tools">
+                      <button type="button" onClick={() => onRead(result)}>Read in context</button>
                       <button type="button" onClick={() => onCopy(`${result.ref} (${result.version}) — ${result.text}`, `${result.ref} copied.`)}>Copy</button>
                       <button type="button" className={isSaved ? "saved" : ""} onClick={() => onToggleSaved(result)} aria-pressed={isSaved}>{isSaved ? "Saved" : "Save"}</button>
                     </div>

@@ -117,9 +117,22 @@ def fallback_expression(expression: str) -> str:
 
 def tokenize(expression: str) -> list[str]:
     """Split a Boolean expression into words, operators, and parentheses."""
-    normalized = re.sub(r"\bAND\b", "+", expression, flags=re.IGNORECASE)
-    normalized = re.sub(r"\bOR\b", ",", normalized, flags=re.IGNORECASE)
-    return TOKEN_PATTERN.findall(normalized)
+    if re.search(r"[^A-Za-z0-9_(),+\s]", expression):
+        raise ValueError("Use words, parentheses, +, commas, AND, or OR in a Boolean search.")
+    tokens = TOKEN_PATTERN.findall(expression)
+    normalized: list[str] = []
+    for index, token in enumerate(tokens):
+        previous = tokens[index - 1] if index > 0 else ""
+        following = tokens[index + 1] if index + 1 < len(tokens) else ""
+        between_operands = (
+            (WORD_PATTERN.fullmatch(previous) or previous == ")")
+            and (WORD_PATTERN.fullmatch(following) or following == "(")
+        )
+        if between_operands and token.casefold() in {"and", "or"}:
+            normalized.append("+" if token.casefold() == "and" else ",")
+        else:
+            normalized.append(token)
+    return normalized
 
 
 def to_postfix(tokens: list[str]) -> list[str]:
@@ -127,11 +140,17 @@ def to_postfix(tokens: list[str]) -> list[str]:
     precedence = {"+": 2, ",": 1}
     output: list[str] = []
     operators: list[str] = []
+    expects_word = True
 
     for token in tokens:
         if WORD_PATTERN.fullmatch(token):
+            if not expects_word:
+                raise ValueError("Add + or a comma between adjacent search words.")
             output.append(token)
+            expects_word = False
         elif token in precedence:
+            if expects_word:
+                raise ValueError("An operator needs a word on both sides.")
             while (
                 operators
                 and operators[-1] in precedence
@@ -139,15 +158,24 @@ def to_postfix(tokens: list[str]) -> list[str]:
             ):
                 output.append(operators.pop())
             operators.append(token)
+            expects_word = True
         elif token == "(":
+            if not expects_word:
+                raise ValueError("Add an operator before an opening parenthesis.")
             operators.append(token)
         elif token == ")":
+            if expects_word:
+                raise ValueError("A closing parenthesis must follow a word or group.")
             while operators and operators[-1] != "(":
                 output.append(operators.pop())
             if not operators:
                 raise ValueError("Unmatched closing parenthesis.")
             operators.pop()
+        else:
+            raise ValueError("Unknown Boolean search token.")
 
+    if expects_word:
+        raise ValueError("Finish the search with a word, not an operator.")
     if "(" in operators:
         raise ValueError("Unmatched opening parenthesis.")
     output.extend(reversed(operators))

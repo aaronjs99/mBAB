@@ -8,8 +8,10 @@ import { BOOK_GROUPS, VERSIONS } from "@/app/search/catalog";
 import { applyTheme, readInitialBrowserState, storeSavedVerses } from "@/app/search/browser-storage";
 import { searchParamsFor } from "@/app/search/search-location";
 import { useSearchSession } from "@/app/search/use-search-session";
+import { useChapterReader } from "@/app/search/use-chapter-reader";
 import type { SearchExample, SearchMode, SearchResult } from "@/app/search/types";
 import { HowItWorks } from "./HowItWorks";
+import { ChapterReader } from "./ChapterReader";
 import { SavedTray } from "./SavedTray";
 import { SearchForm } from "./SearchForm";
 import { SearchResults } from "./SearchResults";
@@ -25,6 +27,7 @@ function sameIds(left: number[], right: readonly number[]) {
 }
 
 export function SearchStudio() {
+  const reader = useChapterReader();
   const { draft, setDraft, completed, pending, failure, status, ready, runSearch, cancel, draftChanged } = useSearchSession();
   const { query, mode, version, bookIds: selectedBooks, caseSensitive } = draft;
   const loading = pending !== null;
@@ -55,10 +58,13 @@ export function SearchStudio() {
       const target = event.target as HTMLElement | null;
       if (
         event.key === "/"
+        && !document.querySelector("dialog[open]")
         && !event.metaKey
         && !event.ctrlKey
         && target?.tagName !== "INPUT"
         && target?.tagName !== "TEXTAREA"
+        && target?.tagName !== "SELECT"
+        && !target?.isContentEditable
       ) {
         event.preventDefault();
         document.getElementById("query")?.focus();
@@ -154,7 +160,12 @@ export function SearchStudio() {
         </nav>
       </header>
 
-      {savedOpen && <SavedTray items={saved} onClose={() => setSavedOpen(false)} onRemove={toggleSaved} />}
+      {savedOpen && <SavedTray items={saved} onClose={() => setSavedOpen(false)} onRemove={toggleSaved} onRead={result => reader.open({ result, query: "", caseSensitive: false })} />}
+      {reader.selection && <ChapterReader
+        selection={reader.selection} chapter={reader.chapter} comparison={reader.comparison}
+        comparisonVersion={reader.comparisonVersion} expanded={reader.expanded}
+        onCompare={reader.setComparisonVersion} onExpand={reader.setExpanded} onClose={reader.close}
+      />}
 
       <main id="main-content">
         <section className="search-intro">
@@ -208,6 +219,7 @@ export function SearchStudio() {
             loading={loading}
             onCopy={(value, success) => void copy(value, success)}
             onToggleSaved={toggleSaved}
+            onRead={result => reader.open({ result, query: completed.response.expression, caseSensitive: completed.settings.caseSensitive })}
             onShare={() => void copy(`${window.location.origin}${window.location.pathname}?${searchParamsFor(completed.settings)}`, "Share link copied.")}
             onPage={(page) => { setNotice(""); void runSearch({ ...completed.settings, page }); }}
           />

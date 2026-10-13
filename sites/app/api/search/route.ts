@@ -74,7 +74,7 @@ export async function GET(request: Request) {
       return json(paginatedResponse([], page, pageSize, built.expression, selectedBooks.length), 200, true);
     }
     try {
-      const verses = await fetchReferenceVerses(reference, version);
+      const verses = await fetchReferenceVerses(reference, version, request.signal);
       const allResults = verses
         .filter((item) => reference.startVerse === undefined
           || (item.verse >= reference.startVerse
@@ -116,7 +116,7 @@ export async function GET(request: Request) {
   try {
     const response = await fetch(legacyUrl, {
       headers: { Accept: "application/json", "User-Agent": "mBAB-Sites/1.0" },
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(12_000)]),
     });
     if (!response.ok) throw new Error(`Search source returned ${response.status}`);
 

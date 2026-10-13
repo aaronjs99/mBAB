@@ -35,11 +35,23 @@ export function queryTerms(input: string): string[] {
   ];
 }
 
+function advancedTokens(input: string): string[] {
+  const tokens = input.match(/[A-Za-z0-9_]+|[(),+]/g) ?? [];
+  return tokens.map((token, index) => {
+    const previous = tokens[index - 1] ?? "";
+    const next = tokens[index + 1] ?? "";
+    const betweenOperands = (/^[A-Za-z0-9_]+$/.test(previous) || previous === ")")
+      && (/^[A-Za-z0-9_]+$/.test(next) || next === "(");
+    if (betweenOperands && /^(AND|OR)$/i.test(token)) return /^AND$/i.test(token) ? "+" : ",";
+    return token;
+  });
+}
+
 export function validateAdvanced(input: string): string | null {
   if (!/^[A-Za-z0-9_(),+\s]+$/.test(input)) {
     return "Advanced search accepts words, parentheses, +, and commas only.";
   }
-  const tokens = input.match(/[A-Za-z0-9_]+|[(),+]/g) ?? [];
+  const tokens = advancedTokens(input);
   if (!tokens.length) return "Enter at least one search word.";
 
   let depth = 0;
@@ -73,7 +85,7 @@ export function expressionFor(
   }
   if (mode === "advanced") {
     const error = validateAdvanced(query);
-    return error ? { error } : { expression: query.replace(/\s+/g, "") };
+    return error ? { error } : { expression: advancedTokens(query).join("") };
   }
   const terms = query.match(/[A-Za-z0-9_]+/g)?.slice(0, 12) ?? [];
   if (!terms.length) return { error: "Enter at least one search word." };

@@ -1,4 +1,4 @@
-@import "../../sites/node_modules/tailwindcss/index.css";
+@import "../../sites/node_modules/tailwindcss/index.css" source(none);
 
 @source "../templates";
 @source "../static/searchapp/scripts/search";

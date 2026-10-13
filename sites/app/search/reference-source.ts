@@ -1,6 +1,5 @@
 import type { BibleReference } from "./query";
-
-type ChapterVerse = { verse: number; text: string };
+import { isChapterVerses, type ChapterVerse } from "./chapter-response";
 
 const CHAPTER_URL = process.env.MBAB_CHAPTER_URL
   ?? "https://aaronjs.pythonanywhere.com/chapter/";
@@ -37,6 +36,7 @@ function contentText(value: unknown): string {
 async function fromCorpus(
   reference: BibleReference,
   version: string,
+  signal?: AbortSignal,
 ): Promise<ChapterVerse[] | null> {
   const url = new URL(CHAPTER_URL);
   url.searchParams.set("book", reference.book);
@@ -44,16 +44,20 @@ async function fromCorpus(
   url.searchParams.set("version", version);
   const response = await fetch(url, {
     headers: { Accept: "application/json", "User-Agent": "mBAB-Sites/1.0" },
-    signal: AbortSignal.timeout(4_000),
+    signal: AbortSignal.any([AbortSignal.timeout(4_000), ...(signal ? [signal] : [])]),
   });
   if (!response.ok) return null;
-  const payload = (await response.json()) as { verses?: ChapterVerse[] };
+  const payload = (await response.json()) as { book?: string; chapter?: number; version?: string; verses?: ChapterVerse[] };
+  if ((payload.book !== undefined && payload.book !== reference.book)
+    || (payload.chapter !== undefined && payload.chapter !== reference.chapter)
+    || (payload.version !== undefined && payload.version !== version)) return null;
   return payload.verses ?? null;
 }
 
 async function fromHelloAo(
   reference: BibleReference,
   version: string,
+  signal?: AbortSignal,
 ): Promise<ChapterVerse[] | null> {
   const translation = HELLOAO_VERSION_BY_MBAB[version];
   const book = HELLOAO_BOOK_IDS[reference.bookId];
@@ -62,7 +66,7 @@ async function fromHelloAo(
     `${HELLOAO_BASE_URL}/${translation}/${book}/${reference.chapter}.json`,
     {
       headers: { Accept: "application/json", "User-Agent": "mBAB-Sites/1.0" },
-      signal: AbortSignal.timeout(8_000),
+      signal: AbortSignal.any([AbortSignal.timeout(8_000), ...(signal ? [signal] : [])]),
     },
   );
   if (!response.ok) return null;
@@ -87,13 +91,14 @@ function decodeCsvText(value: string): string {
 async function fromBibleDatabases(
   reference: BibleReference,
   version: string,
+  signal?: AbortSignal,
 ): Promise<ChapterVerse[] | null> {
   if (!(version === "AKJV" || version === "UKJV")) return null;
   const response = await fetch(
     `${BIBLE_DATABASES_CSV_URL}/${version}Bible_Database.csv`,
     {
       headers: { Accept: "text/csv", "User-Agent": "mBAB-Sites/1.0" },
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.any([AbortSignal.timeout(10_000), ...(signal ? [signal] : [])]),
     },
   );
   if (!response.ok) return null;
@@ -113,13 +118,17 @@ async function fromBibleDatabases(
 export async function fetchReferenceVerses(
   reference: BibleReference,
   version: string,
+  signal?: AbortSignal,
 ): Promise<ChapterVerse[]> {
   const providers = [fromCorpus, fromHelloAo, fromBibleDatabases];
   for (const provider of providers) {
+    signal?.throwIfAborted();
     try {
-      const verses = await provider(reference, version);
-      if (verses) return verses;
+      const verses = await provider(reference, version, signal);
+      signal?.throwIfAborted();
+      if (isChapterVerses(verses)) return verses;
     } catch {
+      signal?.throwIfAborted();
       // The next source keeps reference lookup resilient during host transitions.
     }
   }
