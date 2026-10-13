@@ -2,7 +2,8 @@ import type { BibleReference } from "./query";
 
 type ChapterVerse = { verse: number; text: string };
 
-const PYTHONANYWHERE_CHAPTER_URL = "https://aaronjs.pythonanywhere.com/chapter/";
+const CHAPTER_URL = process.env.MBAB_CHAPTER_URL
+  ?? "https://aaronjs.pythonanywhere.com/chapter/";
 const HELLOAO_BASE_URL = "https://bible.helloao.org/api";
 const BIBLE_DATABASES_CSV_URL = "https://raw.githubusercontent.com/aaronjs99/bible-databases/master/CSV";
 
@@ -33,11 +34,11 @@ function contentText(value: unknown): string {
   return "";
 }
 
-async function fromPythonAnywhere(
+async function fromCorpus(
   reference: BibleReference,
   version: string,
 ): Promise<ChapterVerse[] | null> {
-  const url = new URL(PYTHONANYWHERE_CHAPTER_URL);
+  const url = new URL(CHAPTER_URL);
   url.searchParams.set("book", reference.book);
   url.searchParams.set("chapter", String(reference.chapter));
   url.searchParams.set("version", version);
@@ -113,7 +114,7 @@ export async function fetchReferenceVerses(
   reference: BibleReference,
   version: string,
 ): Promise<ChapterVerse[]> {
-  const providers = [fromPythonAnywhere, fromHelloAo, fromBibleDatabases];
+  const providers = [fromCorpus, fromHelloAo, fromBibleDatabases];
   for (const provider of providers) {
     try {
       const verses = await provider(reference, version);

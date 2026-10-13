@@ -1,55 +1,64 @@
-import { ALL_BOOK_IDS, DEFAULT_VERSION, isSearchMode, isVersion } from "./catalog";
-import type { SearchMode, SearchResult } from "./types";
+import { readSearchLocation } from "./search-location";
+import { isSearchResult } from "./search-response";
+import type { SearchLocation, SearchResult } from "./types";
 
 const SAVED_KEY = "mbab:saved-verses";
 const THEME_KEY = "mbab:theme";
 
-export type InitialBrowserState = {
+export type InitialBrowserState = SearchLocation & {
   saved: SearchResult[];
   dark: boolean;
-  query: string;
-  mode: SearchMode;
-  version: string;
-  bookIds: number[];
 };
+
+function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
 
 export function readInitialBrowserState(): InitialBrowserState {
   let saved: SearchResult[] = [];
   try {
-    const parsed = JSON.parse(localStorage.getItem(SAVED_KEY) ?? "[]") as unknown;
-    if (Array.isArray(parsed)) saved = parsed.slice(0, 100) as SearchResult[];
+    const parsed: unknown = JSON.parse(readStorage(SAVED_KEY) ?? "[]");
+    if (Array.isArray(parsed)) {
+      const seen = new Set<string>();
+      saved = parsed.filter(isSearchResult).filter((item) => {
+        const key = `${item.version}:${item.ref}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).slice(0, 100);
+    }
   } catch {
-    localStorage.removeItem(SAVED_KEY);
+    // Leave unreadable data intact; search must still work without storage.
   }
 
-  const preferredTheme = localStorage.getItem(THEME_KEY);
+  const preferredTheme = readStorage(THEME_KEY);
   const dark = preferredTheme === "dark"
     || (!preferredTheme && matchMedia("(prefers-color-scheme: dark)").matches);
-  const params = new URLSearchParams(window.location.search);
-  const modeValue = params.get("mode");
-  const versionValue = params.get("version");
-  const sharedBooks = params.get("books")
-    ?.split(",")
-    .map(Number)
-    .filter((id) => Number.isInteger(id) && id >= 0 && id < ALL_BOOK_IDS.length);
-
   return {
     saved,
     dark,
-    query: (params.get("q") ?? "").slice(0, 120),
-    mode: isSearchMode(modeValue) ? modeValue : "all",
-    version: isVersion(versionValue) ? versionValue : DEFAULT_VERSION,
-    bookIds: sharedBooks?.length
-      ? [...new Set(sharedBooks)].sort((left, right) => left - right)
-      : ALL_BOOK_IDS,
+    ...readSearchLocation(window.location.search),
   };
 }
 
-export function storeSavedVerses(items: SearchResult[]) {
-  localStorage.setItem(SAVED_KEY, JSON.stringify(items));
+export function storeSavedVerses(items: SearchResult[]): boolean {
+  try {
+    localStorage.setItem(SAVED_KEY, JSON.stringify(items));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function applyTheme(dark: boolean) {
   document.documentElement.dataset.theme = dark ? "dark" : "light";
-  localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
+  try {
+    localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
+  } catch {
+    // The current tab can still change theme when persistence is unavailable.
+  }
 }

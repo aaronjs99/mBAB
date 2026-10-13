@@ -1,5 +1,15 @@
 export type SearchMode = "all" | "any" | "advanced";
 
+export type SearchSettings = {
+  query: string;
+  mode: SearchMode;
+  version: string;
+  bookIds: number[];
+  caseSensitive: boolean;
+};
+
+export type SearchLocation = SearchSettings & { page: number };
+
 export type BibleBook = {
   id: number;
   name: string;

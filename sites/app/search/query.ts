@@ -81,8 +81,10 @@ export function expressionFor(
 }
 
 export function parseBookIds(value: string | null): number[] | null {
-  if (!value) return BOOKS.map((book) => book.id);
-  const ids = [...new Set(value.split(",").map(Number))];
+  if (value === null) return BOOKS.map((book) => book.id);
+  const tokens = value.split(",").map((token) => token.trim());
+  if (tokens.some((token) => !/^\d+$/.test(token))) return null;
+  const ids = [...new Set(tokens.map(Number))];
   if (
     !ids.length
     || ids.some((id) => !Number.isInteger(id) || id < 0 || id >= BOOKS.length)

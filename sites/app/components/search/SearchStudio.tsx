@@ -4,9 +4,11 @@ import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-import { ALL_BOOK_IDS, BOOK_GROUPS, VERSIONS } from "@/app/search/catalog";
+import { BOOK_GROUPS, VERSIONS } from "@/app/search/catalog";
 import { applyTheme, readInitialBrowserState, storeSavedVerses } from "@/app/search/browser-storage";
-import type { SearchExample, SearchMode, SearchResponse, SearchResult } from "@/app/search/types";
+import { searchParamsFor } from "@/app/search/search-location";
+import { useSearchSession } from "@/app/search/use-search-session";
+import type { SearchExample, SearchMode, SearchResult } from "@/app/search/types";
 import { HowItWorks } from "./HowItWorks";
 import { SavedTray } from "./SavedTray";
 import { SearchForm } from "./SearchForm";
@@ -23,15 +25,11 @@ function sameIds(left: number[], right: readonly number[]) {
 }
 
 export function SearchStudio() {
-  const [query, setQuery] = useState("");
-  const [mode, setMode] = useState<SearchMode>("all");
-  const [version, setVersion] = useState("KJV");
-  const [selectedBooks, setSelectedBooks] = useState<number[]>(ALL_BOOK_IDS);
+  const { draft, setDraft, completed, pending, failure, status, ready, runSearch, cancel, draftChanged } = useSearchSession();
+  const { query, mode, version, bookIds: selectedBooks, caseSensitive } = draft;
+  const loading = pending !== null;
+  const error = failure?.message ?? "";
   const [showBooks, setShowBooks] = useState(false);
-  const [caseSensitive, setCaseSensitive] = useState(false);
-  const [response, setResponse] = useState<SearchResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [saved, setSaved] = useState<SearchResult[]>([]);
   const [savedOpen, setSavedOpen] = useState(false);
   const [dark, setDark] = useState(false);
@@ -41,7 +39,7 @@ export function SearchStudio() {
     () => BOOK_GROUPS.find((group) => sameIds(selectedBooks, group.ids))?.id ?? "custom",
     [selectedBooks],
   );
-  const selectedVersion = VERSIONS.find((item) => item.id === version) ?? VERSIONS[0];
+  const selectedVersion = VERSIONS.find((item) => item.id === completed?.settings.version) ?? VERSIONS[0];
 
   useEffect(() => {
     const initial = readInitialBrowserState();
@@ -49,10 +47,6 @@ export function SearchStudio() {
     queueMicrotask(() => {
       setSaved(initial.saved);
       setDark(initial.dark);
-      setQuery(initial.query);
-      setMode(initial.mode);
-      setVersion(initial.version);
-      setSelectedBooks(initial.bookIds);
     });
   }, []);
 
@@ -74,55 +68,14 @@ export function SearchStudio() {
     return () => window.removeEventListener("keydown", focusSearch);
   }, []);
 
-  async function performSearch(page = 1, override?: SearchExample) {
-    const effectiveQuery = (override?.query ?? query).trim();
-    const effectiveMode = override?.mode ?? mode;
-    if (effectiveQuery.length < 2) {
-      setError("Enter at least two characters to begin.");
-      return;
-    }
-    if (!selectedBooks.length) {
-      setError("Choose at least one book.");
-      return;
-    }
-
-    setQuery(effectiveQuery);
-    setMode(effectiveMode);
-    setLoading(true);
-    setError("");
+  function performSearch(override?: SearchExample) {
+    const settings = {
+      ...draft, query: (override?.query ?? query).trim(),
+      mode: override?.mode ?? mode, page: 1,
+    };
+    setDraft(settings);
     setNotice("");
-
-    const params = new URLSearchParams({
-      q: effectiveQuery,
-      mode: effectiveMode,
-      version,
-      books: selectedBooks.join(","),
-      case: String(caseSensitive),
-      page: String(page),
-      pageSize: "20",
-    });
-    try {
-      const result = await fetch(`/api/search?${params.toString()}`, {
-        headers: { Accept: "application/json" },
-      });
-      const payload = (await result.json()) as SearchResponse & { error?: string };
-      if (!result.ok) throw new Error(payload.error || "Search could not be completed.");
-      setResponse(payload);
-
-      const shareParams = new URLSearchParams({
-        q: effectiveQuery,
-        mode: effectiveMode,
-        version,
-        books: selectedBooks.join(","),
-      });
-      window.history.replaceState(null, "", `${window.location.pathname}?${shareParams}`);
-      document.getElementById("search-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    } catch (searchError) {
-      setResponse(null);
-      setError(searchError instanceof Error ? searchError.message : "Search could not be completed.");
-    } finally {
-      setLoading(false);
-    }
+    void runSearch(settings);
   }
 
   function submit(event: FormEvent) {
@@ -131,9 +84,12 @@ export function SearchStudio() {
   }
 
   function toggleBook(id: number) {
-    setSelectedBooks((current) => current.includes(id)
-      ? current.filter((bookId) => bookId !== id)
-      : [...current, id].sort((left, right) => left - right));
+    setDraft((current) => ({
+      ...current,
+      bookIds: current.bookIds.includes(id)
+        ? current.bookIds.filter((bookId) => bookId !== id)
+        : [...current.bookIds, id].sort((left, right) => left - right),
+    }));
   }
 
   async function copy(value: string, success: string) {
@@ -151,8 +107,11 @@ export function SearchStudio() {
     const next = exists
       ? saved.filter((item) => `${item.version}:${item.ref}` !== key)
       : [result, ...saved].slice(0, 100);
+    if (!storeSavedVerses(next)) {
+      setNotice("This browser could not save your changes. Allow local storage and try again.");
+      return;
+    }
     setSaved(next);
-    storeSavedVerses(next);
     setNotice(exists ? `${result.ref} removed from saved verses.` : `${result.ref} saved on this device.`);
   }
 
@@ -163,7 +122,7 @@ export function SearchStudio() {
   }
 
   function returnToSearch(nextMode?: SearchMode) {
-    if (nextMode) setMode(nextMode);
+    if (nextMode) setDraft((current) => ({ ...current, mode: nextMode }));
     document.getElementById("search-heading")?.scrollIntoView({ behavior: "smooth", block: "start" });
     window.setTimeout(() => document.getElementById("query")?.focus(), 450);
   }
@@ -214,39 +173,49 @@ export function SearchStudio() {
           showBooks={showBooks}
           caseSensitive={caseSensitive}
           loading={loading}
+          ready={ready}
           examples={EXAMPLES}
-          onQueryChange={setQuery}
-          onModeChange={setMode}
-          onVersionChange={setVersion}
-          onCaseChange={setCaseSensitive}
+          onQueryChange={(value) => setDraft((current) => ({ ...current, query: value }))}
+          onModeChange={(value) => setDraft((current) => ({ ...current, mode: value }))}
+          onVersionChange={(value) => setDraft((current) => ({ ...current, version: value }))}
+          onCaseChange={(value) => setDraft((current) => ({ ...current, caseSensitive: value }))}
           onTogglePicker={() => setShowBooks((value) => !value)}
-          onSelectGroup={(ids) => setSelectedBooks([...ids].sort((left, right) => left - right))}
+          onSelectGroup={(ids) => setDraft((current) => ({ ...current, bookIds: [...ids].sort((left, right) => left - right) }))}
           onToggleBook={toggleBook}
           onSearch={submit}
-          onExample={(example) => void performSearch(1, example)}
+          onExample={performSearch}
         />
 
-        <div className="announcer" aria-live="polite">{error || notice || (response ? `${response.total} ${response.total === 1 ? "verse" : "verses"} found` : "")}</div>
-        {error && <div className="error-banner" role="alert"><strong>Search paused.</strong> {error}</div>}
+        <div className="announcer" aria-live="polite">{notice || status || (pending ? "Searching Scripture." : completed ? `${completed.response.total} ${completed.response.total === 1 ? "verse" : "verses"} found` : "")}</div>
+        {pending && (
+          <div className="search-status" role="status">
+            <span><span className="spinner" aria-hidden="true" /> Searching “{pending.query}” in {pending.version}…</span>
+            <button className="text-button" type="button" onClick={cancel}>Cancel search</button>
+          </div>
+        )}
+        {error && <div className="error-banner" role="alert"><span><strong>Search paused.</strong> {error}{completed ? " Previous results are still shown below." : ""}</span>{failure?.retryable && <button type="button" disabled={loading} onClick={() => { setNotice(""); void runSearch(failure.settings); }}>Retry search</button>}</div>}
         {notice && <div className="toast" role="status">{notice}</div>}
 
-        {response && (
+        {completed && (
           <SearchResults
-            response={response}
-            query={query}
-            mode={mode}
+            response={completed.response}
+            query={completed.settings.query}
+            mode={completed.settings.mode}
+            caseSensitive={completed.settings.caseSensitive}
+            draftChanged={draftChanged}
             edition={selectedVersion}
             saved={saved}
             loading={loading}
             onCopy={(value, success) => void copy(value, success)}
             onToggleSaved={toggleSaved}
-            onPage={(page) => void performSearch(page)}
+            onShare={() => void copy(`${window.location.origin}${window.location.pathname}?${searchParamsFor(completed.settings)}`, "Share link copied.")}
+            onPage={(page) => { setNotice(""); void runSearch({ ...completed.settings, page }); }}
           />
         )}
 
         <HowItWorks
           firstExample={EXAMPLES[0]}
-          onExample={(example) => void performSearch(1, example)}
+          onExample={performSearch}
           onChooseBooks={openBookPicker}
           onReturnToSearch={returnToSearch}
         />

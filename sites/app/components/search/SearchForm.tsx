@@ -12,6 +12,7 @@ type Props = {
   showBooks: boolean;
   caseSensitive: boolean;
   loading: boolean;
+  ready: boolean;
   examples: SearchExample[];
   onQueryChange: (value: string) => void;
   onModeChange: (value: SearchMode) => void;
@@ -33,6 +34,7 @@ export function SearchForm({
   showBooks,
   caseSensitive,
   loading,
+  ready,
   examples,
   onQueryChange,
   onModeChange,
@@ -50,14 +52,14 @@ export function SearchForm({
         <div><p className="eyebrow">Begin your search</p><h2 id="search-heading">What are you looking for?</h2></div>
         <div className="edition-control">
           <label htmlFor="version">Edition</label>
-          <select id="version" value={version} onChange={(event) => onVersionChange(event.target.value)}>
+          <select id="version" value={version} disabled={!ready} onChange={(event) => onVersionChange(event.target.value)}>
             {VERSIONS.map((item) => <option key={item.id} value={item.id}>{item.short} · {item.label}</option>)}
           </select>
         </div>
       </div>
 
       <form onSubmit={onSearch}>
-        <fieldset className="mode-switcher">
+        <fieldset className="mode-switcher" disabled={!ready}>
           <legend className="sr-only">Search mode</legend>
           {SEARCH_MODES.map((item) => (
             <button key={item.id} type="button" className={mode === item.id ? "active" : ""} onClick={() => onModeChange(item.id)} aria-pressed={mode === item.id}>{item.label}</button>
@@ -73,9 +75,10 @@ export function SearchForm({
             placeholder={mode === "advanced" ? "Try: (faith + works), grace" : "Try: love mercy"}
             maxLength={120}
             autoComplete="off"
+            disabled={!ready}
             aria-describedby="query-help"
           />
-          <button className="search-button" type="submit" disabled={loading}>
+          <button className="search-button" type="submit" disabled={!ready || loading}>
             {loading ? <><span className="spinner" aria-hidden="true" /> Searching</> : <>Search <span aria-hidden="true">→</span></>}
           </button>
         </div>
@@ -83,7 +86,7 @@ export function SearchForm({
           <p id="query-help">{modeDescription(mode)}</p>
           <div className="query-options">
             <span className="keyboard-hint"><kbd>/</kbd> Focus search</span>
-            <label className="check-control"><input type="checkbox" checked={caseSensitive} onChange={(event) => onCaseChange(event.target.checked)} /> Match case</label>
+            <label className="check-control"><input type="checkbox" disabled={!ready} checked={caseSensitive} onChange={(event) => onCaseChange(event.target.checked)} /> Match case</label>
           </div>
         </div>
 
@@ -91,10 +94,10 @@ export function SearchForm({
           <div className="book-filter-bar">
             <div className="group-pills" aria-label="Book collections">
               {BOOK_GROUPS.map((group) => (
-                <button key={group.id} type="button" className={activeGroup === group.id ? "active" : ""} onClick={() => onSelectGroup(group.ids)}>{group.label}</button>
+                <button key={group.id} type="button" disabled={!ready} className={activeGroup === group.id ? "active" : ""} onClick={() => onSelectGroup(group.ids)} aria-pressed={activeGroup === group.id}>{group.label}</button>
               ))}
             </div>
-            <button className="filter-toggle" type="button" onClick={onTogglePicker} aria-expanded={showBooks}>
+            <button className="filter-toggle" type="button" disabled={!ready} onClick={onTogglePicker} aria-expanded={showBooks}>
               Choose books <span>{selectedBooks.length}/{BOOKS.length}</span> <span aria-hidden="true">{showBooks ? "−" : "+"}</span>
             </button>
           </div>
@@ -105,7 +108,7 @@ export function SearchForm({
                   <h3>{testament}</h3>
                   <div className="book-grid">
                     {BOOKS.filter((book) => book.testament === testament).map((book) => (
-                      <button key={book.id} type="button" className={selectedBooks.includes(book.id) ? "selected" : ""} onClick={() => onToggleBook(book.id)} aria-pressed={selectedBooks.includes(book.id)}>{book.abbreviation}</button>
+                      <button key={book.id} type="button" disabled={!ready} className={selectedBooks.includes(book.id) ? "selected" : ""} onClick={() => onToggleBook(book.id)} aria-pressed={selectedBooks.includes(book.id)} aria-label={book.name}>{book.abbreviation}</button>
                     ))}
                   </div>
                 </div>
@@ -118,7 +121,7 @@ export function SearchForm({
       <div className="example-row">
         <span>Try a search</span>
         {examples.map((example) => (
-          <button key={example.label} type="button" onClick={() => onExample(example)}>{example.label} <span aria-hidden="true">↗</span></button>
+          <button key={example.label} type="button" disabled={!ready} onClick={() => onExample(example)}>{example.label} <span aria-hidden="true">↗</span></button>
         ))}
       </div>
     </section>

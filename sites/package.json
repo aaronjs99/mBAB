@@ -11,6 +11,10 @@
     "build:legacy-css": "tailwindcss -i ../searchapp/styles/tailwind.css -o ../searchapp/static/searchapp/stylesheets/styles.css --minify",
     "start": "vinext start",
     "test": "npm run build && node --test tests/*.test.mjs",
+    "test:unit": "node --test tests/search-state.test.mjs tests/reference-workflow.test.mjs",
+    "test:browser": "playwright test",
+    "test:built": "node --test tests/built-app.mjs",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
   },
   "dependencies": {
@@ -23,6 +27,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.45.0",
+    "@playwright/test": "1.62.1",
     "@tailwindcss/cli": "4.2.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",

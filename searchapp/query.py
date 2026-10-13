@@ -84,10 +84,23 @@ def classify_query(expression: str) -> QueryKind:
     """Classify a reference, explicit expression, or natural-language request."""
     normalized = expression.strip()
     lowered = normalized.casefold()
+    if NATURAL_PREFIX_PATTERN.match(normalized):
+        return QueryKind.NATURAL
     if parse_reference(normalized):
         return QueryKind.REFERENCE
-    if lowered.startswith(("key:", "search:")) or re.search(r"[+,()]", normalized):
+    if (
+        lowered.startswith(("key:", "search:"))
+        or WORD_PATTERN.fullmatch(normalized)
+        or re.search(r"[+,()]", normalized)
+    ):
         return QueryKind.STANDARD
+    if re.search(r"\b(?:AND|OR)\b", normalized, flags=re.IGNORECASE):
+        try:
+            compile_query(normalized)
+        except ValueError:
+            pass
+        else:
+            return QueryKind.STANDARD
     return QueryKind.NATURAL
 
 

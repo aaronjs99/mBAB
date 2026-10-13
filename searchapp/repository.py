@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from typing import Callable
 
@@ -64,13 +65,13 @@ class BibleRepository:
             "SELECT Book, Chapter, Versecount, verse FROM bible WHERE "
             f"{query.where_clause} ORDER BY Book, Chapter, Versecount"
         )
-        with self._connect() as database:
+        with closing(self._connect()) as database:
             rows = database.execute(command, query.parameters).fetchall()
         return [dict(row) for row in rows]
 
     def chapter(self, book_id: int, chapter: int) -> list[dict[str, object]]:
         """Return one complete chapter in verse order."""
-        with self._connect() as database:
+        with closing(self._connect()) as database:
             rows = database.execute(
                 "SELECT Versecount AS verse, verse AS text FROM bible "
                 "WHERE Book = ? AND Chapter = ? ORDER BY Versecount",

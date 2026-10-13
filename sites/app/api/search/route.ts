@@ -5,7 +5,8 @@ import type { LegacyRow, SearchMode, SearchResult } from "@/app/search/types";
 
 export const runtime = "edge";
 
-const LEGACY_SEARCH_URL = "https://aaronjs.pythonanywhere.com/ajax/search/";
+const LEGACY_SEARCH_URL = process.env.MBAB_LEGACY_SEARCH_URL
+  ?? "https://aaronjs.pythonanywhere.com/ajax/search/";
 const MAX_QUERY_LENGTH = 120;
 const MAX_PAGE_SIZE = 30;
 
@@ -69,23 +70,23 @@ export async function GET(request: Request) {
 
   const reference = parseReference(query);
   if (reference) {
+    if (!selectedBooks.includes(reference.bookId)) {
+      return json(paginatedResponse([], page, pageSize, built.expression, selectedBooks.length), 200, true);
+    }
     try {
       const verses = await fetchReferenceVerses(reference, version);
-      const inScope = selectedBooks.includes(reference.bookId);
-      const allResults = inScope
-        ? verses
-          .filter((item) => reference.startVerse === undefined
-            || (item.verse >= reference.startVerse
-              && item.verse <= (reference.endVerse ?? reference.startVerse)))
-          .map((item) => ({
-            ref: `${reference.book} ${reference.chapter}:${item.verse}`,
-            book: reference.book,
-            chapter: reference.chapter,
-            verse: Number(item.verse),
-            text: item.text,
-            version,
-          }))
-        : [];
+      const allResults = verses
+        .filter((item) => reference.startVerse === undefined
+          || (item.verse >= reference.startVerse
+            && item.verse <= (reference.endVerse ?? reference.startVerse)))
+        .map((item) => ({
+          ref: `${reference.book} ${reference.chapter}:${item.verse}`,
+          book: reference.book,
+          chapter: reference.chapter,
+          verse: Number(item.verse),
+          text: item.text,
+          version,
+        }));
       return json(
         paginatedResponse(
           allResults,

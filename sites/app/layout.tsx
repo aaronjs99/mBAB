@@ -1,17 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -19,7 +8,6 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const metadataBase = new URL(`${protocol}://${host}`);
   const socialImage = new URL("/og.png", metadataBase).toString();
-
   return {
     metadataBase,
     title: {
@@ -31,6 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords: ["Bible search", "Boolean Bible search", "Scripture search", "multi-book Bible search"],
     authors: [{ name: "Aaron John Sabu" }],
     creator: "Aaron John Sabu",
+    icons: { icon: { url: "/favicon.svg", type: "image/svg+xml" } },
     alternates: { canonical: "/" },
     openGraph: {
       type: "website",
@@ -55,11 +44,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
