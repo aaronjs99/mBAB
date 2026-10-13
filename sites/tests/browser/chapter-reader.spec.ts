@@ -18,6 +18,10 @@ test("reader loads real context, expands the chapter, compares editions and retu
   await dialog.getByLabel("Compare edition").selectOption("WEB");
   await expect(dialog.locator(".reader-comparison")).toContainText("World English Bible");
   await expect(dialog.locator(".reader-verse.current .reader-secondary")).toContainText("one and only Son");
+  const bounds = await dialog.boundingBox();
+  expect(bounds!.y).toBeGreaterThanOrEqual(0);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(1100);
+  await expect(dialog.getByRole("button", { name: "Close reader", exact: true })).toBeInViewport();
   const output = process.env.MBAB_SCREENSHOTS;
   if (output) { await mkdir(output, { recursive: true }); await page.screenshot({ path: join(output, "mbab-reader-desktop.png") }); }
   await dialog.getByRole("button", { name: "Read full chapter", exact: true }).click();

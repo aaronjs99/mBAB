@@ -73,8 +73,11 @@ async function fromHelloAo(
   const payload = (await response.json()) as {
     chapter?: { content?: Array<{ type?: string; number?: number; content?: unknown }> };
   };
-  return (payload.chapter?.content ?? [])
-    .filter((item) => item.type === "verse" && Number.isInteger(item.number))
+  const content = payload.chapter?.content;
+  if (!Array.isArray(content)) return null;
+  const verses = content.filter((item) => item?.type === "verse");
+  if (verses.some(item => !Number.isSafeInteger(item.number))) return null;
+  return verses
     .map((item) => ({
       verse: Number(item.number),
       text: contentText(item.content).replace(/^¶\s*/, ""),

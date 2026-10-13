@@ -77,6 +77,23 @@ literally: `love+and` requires both “love” and “and”. Single `and` or `o
 also remain literal. All-word and any-word modes treat every entered word as text.
 Highlighting uses the compiled expression, so textual operators are not highlighted.
 
+## Dependency maintenance
+
+The toolchain is pinned with a lockfile. The October 13, 2026 update moves Next to
+16.4.0, React and its server renderer to 19.2.8, vinext to 1.1.0, and the Cloudflare
+and Vite tools to compatible current releases. Miniflare is an explicit test-only
+dependency, already used by the Cloudflare tools. Built-artifact checks execute in
+the Worker runtime with outbound access disabled; they do not import Worker-only
+modules into Node or start an interactive production preview.
+
+The production-package audit reports zero advisories. The full audit still reports
+8 high and 3 moderate entries in transitive tooling dependencies. In particular,
+the [braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) has no
+published patch, and `@vercel/og` still pins an affected `fflate` dependency.
+`npm audit --audit-level=high` remains a failing release gate. Do not force an older
+Next or vinext release merely to make the audit output green. Recheck upstream
+releases and run the full validation after changing these packages.
+
 ## Verification
 
 ```bash

@@ -1,18 +1,12 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { after, test } from "node:test";
+import { createBuiltWorker } from "./built-worker.mjs";
 
-const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+const worker = createBuiltWorker();
+after(() => worker.dispose());
 
-async function render(path = "/") {
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-  return worker.fetch(
-    new Request(`https://mbab.test${path}`, { headers: { accept: "text/html" } }),
-    {
-      ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
-    },
-    { waitUntil() {}, passThroughOnException() {} },
-  );
+function render(path = "/") {
+  return worker.dispatchFetch(`https://mbab.test${path}`, { headers: { accept: "text/html" } });
 }
 
 test("server-renders the finished mBAB search experience", async () => {

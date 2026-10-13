@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { after, test } from "node:test";
+import { createBuiltWorker } from "./built-worker.mjs";
 
-const { default: worker } = await import(new URL("../dist/server/index.js", import.meta.url));
+const worker = createBuiltWorker();
+after(() => worker.dispose());
 
 function request(path) {
-  return worker.fetch(
-    new Request(`https://mbab.test${path}`),
-    { ASSETS: { fetch: async () => new Response("Missing asset", { status: 404 }) } },
-    { waitUntil() {}, passThroughOnException() {} },
-  );
+  return worker.dispatchFetch(`https://mbab.test${path}`);
 }
 
 test("the production build server-renders the search page", async () => {

@@ -80,3 +80,13 @@ test("cancellation stops provider fallback requests", async () => {
   await assert.rejects(GET(new Request(chapterUrl, { signal: controller.signal })), { name: "AbortError" });
   assert.equal(requests, 1);
 });
+
+test("a malformed fallback response is unavailable, not a missing chapter", async () => {
+  for (const payload of [{}, { chapter: {} }, { chapter: { content: [{ type: "verse", number: "bad", content: "Invalid coordinate" }] } }]) {
+    globalThis.fetch = async input => {
+      if (new URL(input).hostname === "bible.helloao.org") return Response.json(payload);
+      throw new Error("Primary source unavailable");
+    };
+    assert.equal((await GET(new Request(chapterUrl))).status, 503);
+  }
+});
