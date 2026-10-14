@@ -1,5 +1,7 @@
-Django==5.2.16
-gunicorn==26.0.0
-whitenoise==6.12.0
-openai==2.45.0
-groq==1.5.0
+django
+gunicorn
+whitenoise
+black
+db-sqlite3
+openai
+groq

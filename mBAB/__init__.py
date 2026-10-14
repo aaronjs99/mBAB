@@ -1,1 +1,0 @@
-"""mBAB Django project package."""

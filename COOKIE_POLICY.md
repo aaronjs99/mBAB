@@ -1,35 +1,35 @@
-# mBAB privacy and storage notice
+# Cookie Policy for The Multi-Book Advanced Bible Search (mBAB)
+## This is the Cookie Policy for The Multi-Book Advanced Bible Search (mBAB) web application, accessible from <http://aaronjs.pythonanywhere.com>
 
-Last updated: July 2026
+### What Are Cookies
 
-mBAB is designed to work without a user account. The public Sites application does not require visitors to sign in.
+As is common practice with almost all professional websites, this site uses cookies, which are tiny files that are downloaded to your computer, to improve your experience. This document describes what information they gather, how we use it and why we sometimes need to store these cookies. We will also share how you can prevent these cookies from being stored; however, this may downgrade or 'break' certain elements of the sites functionality.
+For more general information on cookies, please read ["What Are Cookies"](https://www.cookieconsent.com/what-are-cookies/).
 
-## On-device storage
+### How We Use Cookies
 
-mBAB uses browser storage to remember device-local preferences and features such as:
+We use cookies for a variety of reasons detailed below. Unfortunately in most cases there are no industry standard options for disabling cookies without completely disabling the functionality and features they add to this site. It is recommended that you leave on all cookies if you are not sure whether you need them or not in case they are used to provide a service that you use.
 
-- light or dark appearance
-- saved verses
-- recent searches in the Django interface
+### Disabling Cookies
 
-This information remains in the visitor's browser and can be removed by clearing site data. Saved verses are not synchronized to an mBAB server.
+You can prevent the setting of cookies by adjusting the settings on your browser (see your browser Help for how to do this). Be aware that disabling cookies will affect the functionality of this and many other websites that you visit. Disabling cookies will usually result in also disabling certain functionality and features of the this site. Therefore it is recommended that you do not disable cookies.
 
-## Essential cookies
+### The Cookies We Set
 
-The Django application may set essential framework cookies, including CSRF protection and session cookies. These protect form submissions and normal application behavior. mBAB does not use these cookies for advertising.
+#### Site preferences cookies
 
-## Optional analytics
+When you submit data through a form, or interact with selections on the site (such as choosing Bible versions, search keywords, case sensitivity, or selecting books to search within), cookies may be set to remember your choices and preferences. These cookies are essential to provide you with a personalized and consistent experience.
 
-The Django template supports Google Analytics only when the operator privately configures a Google tag identifier. If analytics is not configured, the analytics include is not rendered.
+#### Security cookies
 
-Google's own terms and controls apply when analytics is enabled. Visitors can block or clear analytics cookies through their browser settings.
+In order to maintain security and protect your interactions with forms, we may set small security cookies (such as CSRF tokens) to validate user actions and prevent malicious attacks. These cookies are automatically managed by the application framework.
 
-## Search requests
+#### Third Party Cookies
 
-Search terms and selected filters are sent to the mBAB server so it can return matching verses. Shared-search links can include the query and filters in the URL; anyone receiving such a link can read those values.
+This site uses Google Analytics which is one of the most widespread and trusted analytics solution on the web for helping us to understand how you use the site and ways that we can improve your experience. These cookies may track things such as how long you spend on the site and the pages that you visit so we can continue to produce engaging content. 
+For more information on Google Analytics cookies, see the official [Google Analytics](https://analytics.google.com/analytics/web/#/) page.
 
-Optional AI features send the verse or natural-language query to the configured provider. Exact reference and Boolean searches do not require an AI provider.
+### More Information
 
-## Contact
-
-Questions about this notice can be sent to <aaronjohnsabu1999@gmail.com>.
+Hopefully that has clarified things for you and as was previously mentioned if there is something that you aren't sure whether you need or not it's usually safer to leave cookies enabled in case it does interact with one of the features you use on our site. However if you are still looking for more information then you can contact us: 
+Email: <aaronjohnsabu1999@gmail.com>

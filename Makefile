@@ -1,7 +1,7 @@
 # Use Bash for Git Bash compatibility
 SHELL := /bin/bash
 
-.PHONY: run migrate makemigrations createsuperuser collectstatic install venv check test clean sites-install sites-dev sites-test
+.PHONY: run migrate makemigrations createsuperuser collectstatic install venv clean
 
 # Create virtual environment
 venv:
@@ -19,12 +19,6 @@ run:
 migrate:
 	python manage.py migrate
 
-check:
-	python manage.py check
-
-test:
-	python manage.py test
-
 # Create new migrations
 makemigrations:
 	python manage.py makemigrations
@@ -41,13 +35,3 @@ createsuperuser:
 clean:
 	-find . -name '*.pyc' -exec rm -f {} +
 	-find . -name '__pycache__' -exec rm -rf {} +
-	rm -rf staticfiles sites/dist sites/.vinext sites/.wrangler
-
-sites-install:
-	npm --prefix sites ci
-
-sites-dev:
-	npm --prefix sites run dev
-
-sites-test:
-	npm --prefix sites test

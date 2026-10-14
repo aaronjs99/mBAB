@@ -1,16 +1,7 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-readonly REPOSITORY="https://github.com/aaronjs99/bible-databases"
-readonly ARCHIVE_URL="${REPOSITORY}/archive/refs/heads/master.zip"
-readonly TARGET_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/databases"
-
-temp_dir="$(mktemp -d)"
-trap 'rm -rf "${temp_dir}"' EXIT
-
-printf 'Downloading Bible databases...\n'
-curl --fail --location --silent --show-error "${ARCHIVE_URL}" --output "${temp_dir}/bible.zip"
-unzip -q "${temp_dir}/bible.zip" -d "${temp_dir}"
-mkdir -p "${TARGET_DIR}"
-cp "${temp_dir}/bible-databases-master/DB/"*.db "${TARGET_DIR}/"
-printf 'Bible databases are ready in %s\n' "${TARGET_DIR}"
+#!/bin/bash
+echo "⏬ Downloading Bible databases..."
+mkdir -p databases
+curl -L https://github.com/aaronjohnsabu1999/bible-databases/archive/refs/heads/main.zip -o /tmp/bible.zip
+unzip -q /tmp/bible.zip -d /tmp
+cp /tmp/bible-databases-main/DB/*.db databases/
+echo "✅ Bible databases copied to ./databases/"
