@@ -1,0 +1,51 @@
+{
+  "name": "mbab-sites",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "build:legacy-css": "tailwindcss -i ../searchapp/styles/tailwind.css -o ../searchapp/static/searchapp/stylesheets/styles.css --minify",
+    "start": "vinext start",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "test:unit": "node --test tests/search-state.test.mjs tests/reference-workflow.test.mjs tests/search-language.test.mjs tests/chapter-reader.test.mjs tests/book-overview.test.mjs tests/bundled-corpus.test.mjs tests/asset-corpus.test.mjs tests/dependency-audit.test.mjs",
+    "test:browser": "playwright test",
+    "test:built": "node --test tests/built-app.mjs tests/bundled-worker.mjs",
+    "typecheck": "tsc --noEmit",
+    "audit:dependencies": "node scripts/audit-dependencies.mjs",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
+  },
+  "dependencies": {
+    "next": "16.4.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "overrides": {
+    "postcss": "8.5.30",
+    "satori@0.33.5": { "fflate": "0.7.5" }
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.63.2",
+    "@playwright/test": "1.62.1",
+    "@tailwindcss/cli": "4.2.1",
+    "@tailwindcss/postcss": "4.2.1",
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.1.2",
+    "@vitejs/plugin-rsc": "0.5.37",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.4.0",
+    "miniflare": "5.20261006.2-beta",
+    "react-server-dom-webpack": "19.2.8",
+    "tailwindcss": "4.2.1",
+    "typescript": "5.9.3",
+    "vinext": "1.1.0",
+    "vite": "8.3.4",
+    "wrangler": "4.150.0"
+  },
+  "type": "module"
+}

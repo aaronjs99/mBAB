@@ -1,62 +1,76 @@
-import os, socket
+"""Django settings for the mBAB application."""
+
+from __future__ import annotations
+
+import os
+import socket
 from pathlib import Path
 
-# Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# Detect environment based on hostname or environment variable
-hostname = socket.gethostname()
-try:
-    is_pythonanywhere = 'pythonanywhere' in hostname or 'pythonanywhere' in os.getenv("PYTHONANYWHERE_SITE", "")
-except TypeError:
-    is_pythonanywhere = False
-try:
-    is_heroku = "DYNO" in os.environ
-except TypeError:
-    is_heroku = False
 
-# Helper to load .env values (since python-dotenv might not be installed)
-def load_env_file(filepath):
-    if not filepath.exists():
+def load_env_file(path: Path) -> None:
+    """Load simple KEY=VALUE pairs without overriding process variables."""
+    if not path.is_file():
         return
-    with open(filepath) as f:
-        for line in f:
-            if line.strip() and not line.startswith("#") and "=" in line:
-                key, val = line.strip().split("=", 1)
-                os.environ[key] = val.strip('"').strip("'")
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
-# Load .env file
+
+def env_bool(name: str, default: bool = False) -> bool:
+    """Read a conventional truthy environment value."""
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().casefold() in {"1", "true", "yes", "on"}
+
+
+def env_list(name: str) -> list[str]:
+    """Read a comma-separated environment list."""
+    return [item.strip() for item in os.getenv(name, "").split(",") if item.strip()]
+
+
 load_env_file(BASE_DIR / ".env")
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-mBABonPython-dev-key")
+HOSTNAME = socket.gethostname().casefold()
+IS_PYTHONANYWHERE = "pythonanywhere" in HOSTNAME or bool(
+    os.getenv("PYTHONANYWHERE_SITE")
+)
+IS_HEROKU = "DYNO" in os.environ
+IS_PRODUCTION = IS_PYTHONANYWHERE or IS_HEROKU
 
-# LLM Configuration (DeepSeek > Groq > OpenAI)
+SECRET_KEY = (
+    os.getenv("DJANGO_SECRET_KEY")
+    or os.getenv("SECRET_KEY")
+    or "django-insecure-mbab-local-development-key"
+)
+DEBUG = env_bool("DJANGO_DEBUG", default=not IS_PRODUCTION)
+
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS") or env_list("ALLOWED_HOSTS")
+if not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ["aaronjs.pythonanywhere.com"] if IS_PYTHONANYWHERE else ["*"]
+
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = IS_PRODUCTION
+SESSION_COOKIE_SECURE = IS_PRODUCTION
+CSRF_COOKIE_SECURE = IS_PRODUCTION
+SECURE_HSTS_SECONDS = 31_536_000 if IS_PRODUCTION else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = IS_PRODUCTION
+SECURE_HSTS_PRELOAD = IS_PRODUCTION
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+
+# Optional language-model providers.
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
-if is_pythonanywhere:
-    print("Running on PythonAnywhere")
-    DEBUG = False
-    ALLOWED_HOSTS = ["aaronjs.pythonanywhere.com"]
-elif is_heroku:
-    print("Running on Heroku")
-    DEBUG = False
-    ALLOWED_HOSTS = ["*"]
-else:
-    print("Running locally")
-    DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
-    ALLOWED_HOSTS = ["*"]
-
-# Application definition
 INSTALLED_APPS = [
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
     "django.contrib.staticfiles",
     "searchapp",
 ]
@@ -64,11 +78,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -83,8 +94,6 @@ TEMPLATES = [
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
@@ -92,7 +101,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "mBAB.wsgi.application"
 
-# Database
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -100,20 +108,18 @@ DATABASES = {
     }
 }
 
-
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-# Static files
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [str(BASE_DIR / "searchapp" / "static")]
-STATICFILES_FINDERS = [
-    "django.contrib.staticfiles.finders.FileSystemFinder",
-    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-]
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    },
+}
 
-# Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
