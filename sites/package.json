@@ -11,7 +11,7 @@
     "build:legacy-css": "tailwindcss -i ../searchapp/styles/tailwind.css -o ../searchapp/static/searchapp/stylesheets/styles.css --minify",
     "start": "vinext start",
     "test": "npm run build && node --test tests/*.test.mjs",
-    "test:unit": "node --test tests/search-state.test.mjs tests/reference-workflow.test.mjs tests/search-language.test.mjs tests/chapter-reader.test.mjs",
+    "test:unit": "node --test tests/search-state.test.mjs tests/reference-workflow.test.mjs tests/search-language.test.mjs tests/chapter-reader.test.mjs tests/book-overview.test.mjs",
     "test:browser": "playwright test",
     "test:built": "node --test tests/built-app.mjs",
     "typecheck": "tsc --noEmit",
@@ -23,7 +23,8 @@
     "react-dom": "19.2.8"
   },
   "overrides": {
-    "postcss": "8.5.30"
+    "postcss": "8.5.30",
+    "satori@0.33.5": { "fflate": "0.7.5" }
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.63.2",

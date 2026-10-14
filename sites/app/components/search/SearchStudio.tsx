@@ -222,6 +222,12 @@ export function SearchStudio() {
             onRead={result => reader.open({ result, query: completed.response.expression, caseSensitive: completed.settings.caseSensitive })}
             onShare={() => void copy(`${window.location.origin}${window.location.pathname}?${searchParamsFor(completed.settings)}`, "Share link copied.")}
             onPage={(page) => { setNotice(""); void runSearch({ ...completed.settings, page }); }}
+            onNarrow={bookId => {
+              const narrowed = { ...completed.settings, bookIds: [bookId], page: 1 };
+              setDraft(narrowed);
+              setNotice("");
+              void runSearch(narrowed);
+            }}
           />
         )}
 

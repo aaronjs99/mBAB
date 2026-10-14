@@ -2,6 +2,7 @@ import { BOOKS, modeDescription } from "@/app/search/catalog";
 import { parseReference } from "@/app/search/query";
 import type { BibleVersion, SearchMode, SearchResponse, SearchResult } from "@/app/search/types";
 import { HighlightedText } from "./HighlightedText";
+import { BookOverview } from "./BookOverview";
 
 type Props = {
   response: SearchResponse;
@@ -17,9 +18,10 @@ type Props = {
   onToggleSaved: (result: SearchResult) => void;
   onRead: (result: SearchResult) => void;
   onPage: (page: number) => void;
+  onNarrow: (bookId: number) => void;
 };
 
-export function SearchResults({ response, query, mode, caseSensitive, draftChanged, edition, saved, loading, onCopy, onShare, onToggleSaved, onRead, onPage }: Props) {
+export function SearchResults({ response, query, mode, caseSensitive, draftChanged, edition, saved, loading, onCopy, onShare, onToggleSaved, onRead, onPage, onNarrow }: Props) {
   const first = (response.page - 1) * response.pageSize + (response.total ? 1 : 0);
   const last = Math.min(response.page * response.pageSize, response.total);
   const resultLabel = response.total === 1 ? "verse" : "verses";
@@ -35,6 +37,11 @@ export function SearchResults({ response, query, mode, caseSensitive, draftChang
             <button type="button" onClick={onShare}>Share search</button>
           </div>
         </div>
+
+        {!reference && !!response.bookCounts?.length && <BookOverview
+          counts={response.bookCounts} total={response.total} loading={loading}
+          canNarrow={response.selectedBookCount > 1} onNarrow={onNarrow}
+        />}
 
         {response.results.length ? (
           <div className="result-list">

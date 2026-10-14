@@ -49,6 +49,7 @@ export default defineConfig(async ({ mode }) => {
   );
 
   return {
+    optimizeDeps: { exclude: ["next/link"] },
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,

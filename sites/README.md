@@ -55,6 +55,13 @@ The interface uses system fonts and a local SVG favicon, so Windows previews do
 not depend on generated font file URLs. Social previews retain the existing local
 `public/og.png` card.
 
+Keyword results include a book overview counted across the complete result set,
+including pages not currently visible. Select a book to narrow the submitted query;
+browser Back restores the prior scope and page. Unsubmitted form edits do not change
+the overview. Counts measure matched verses, not word occurrences or book importance.
+The API checks source rows and overview totals before exposing them. Older cached
+responses can still display verses without inventing a partial overview.
+
 ## Read in context
 
 Each result and saved verse opens a chapter reader without changing the search URL,
@@ -87,9 +94,10 @@ the Worker runtime with outbound access disabled; they do not import Worker-only
 modules into Node or start an interactive production preview.
 
 The production-package audit reports zero advisories. The full audit still reports
-8 high and 3 moderate entries in transitive tooling dependencies. In particular,
+8 high entries in transitive tooling dependencies. In particular,
 the [braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) has no
-published patch, and `@vercel/og` still pins an affected `fflate` dependency.
+published patch. A scoped override applies the published `fflate` 0.7.5 security
+backport to Satori 0.33.5, resolving the three related moderate entries.
 `npm audit --audit-level=high` remains a failing release gate. Do not force an older
 Next or vinext release merely to make the audit output green. Recheck upstream
 releases and run the full validation after changing these packages.

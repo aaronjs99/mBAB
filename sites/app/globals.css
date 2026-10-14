@@ -348,6 +348,19 @@ main, footer { margin: 0 auto; max-width: 1440px; }
 .results-head { align-items: end; border-bottom: 1px solid var(--line-strong); display: flex; justify-content: space-between; padding-bottom: 1.2rem; }
 .results-actions { align-items: center; color: var(--muted); display: flex; font-size: 0.75rem; gap: 0.8rem; }
 .results-actions button:hover, .result-tools button:hover, .pagination button:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+.book-overview { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; margin-top: 1.4rem; padding: 1.2rem; }
+.book-overview-head { align-items: baseline; display: flex; gap: 0.8rem; justify-content: space-between; }
+.book-overview-head h3 { font-family: var(--display); font-size: 1.45rem; font-weight: 500; line-height: 1.2; margin: 0; }
+.book-overview-head > span { color: var(--sage-deep); font-size: 0.7rem; white-space: nowrap; }
+.book-overview-caption { color: var(--muted); font-size: 0.74rem; line-height: 1.5; margin: 0.55rem 0 1rem; }
+.book-match-list { display: grid; gap: 0.5rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.book-match { align-items: center; background: linear-gradient(90deg, color-mix(in srgb, var(--sage) 65%, var(--surface)) var(--match-width), var(--surface-strong) var(--match-width)); border: 1px solid var(--line); border-radius: 7px; color: var(--ink); display: grid; font-size: 0.76rem; gap: 0.5rem; grid-template-columns: minmax(0, 1fr) auto; min-height: 44px; padding: 0.5rem 0.7rem; text-align: left; }
+.book-match > span { overflow-wrap: anywhere; }
+.book-match > strong { font-family: var(--font-code); font-size: 0.7rem; font-weight: 600; }
+.book-match:hover:not(:disabled) { border-color: var(--sage-deep); }
+.book-match:disabled { cursor: default; }
+.results-layout[aria-busy="true"] .book-match { opacity: 0.55; }
+.book-overview-more { font-size: 0.72rem; margin-top: 0.6rem; min-height: 44px; }
 .result-card { border-bottom: 1px solid var(--line); display: grid; gap: 1.5rem; grid-template-columns: 42px minmax(0, 1fr); padding: 2.2rem 0; }
 .result-number { color: var(--line-strong); font-family: var(--font-code); font-size: 0.75rem; padding-top: 0.25rem; }
 .result-ref { color: var(--accent-dark); font-size: 0.76rem; font-weight: 760; letter-spacing: 0.08em; margin: 0 0 0.75rem; text-transform: uppercase; }
@@ -464,6 +477,8 @@ footer { align-items: end; display: flex; justify-content: space-between; max-wi
 }
 
 @media (max-width: 680px) {
+  .book-overview { padding: 1rem; }
+  .book-match { font-size: 0.7rem; padding-inline: 0.55rem; }
   .chapter-reader { border-radius: 18px; max-height: calc(100dvh - 1rem); min-height: calc(100dvh - 1rem); width: calc(100vw - 1rem); }
   .reader-header { gap: 0.6rem; padding: 1rem; }
   .reader-header .eyebrow { font-size: 0.58rem; }

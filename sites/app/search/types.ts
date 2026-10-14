@@ -49,7 +49,10 @@ export type SearchResponse = {
   expression: string;
   selectedBookCount: number;
   source: string;
+  bookCounts?: BookMatchCount[];
 };
+
+export type BookMatchCount = { bookId: number; count: number };
 
 export type LegacyPart = { text?: string; highlight?: string };
 

@@ -1,7 +1,9 @@
 import { VERSIONS, bookMask } from "@/app/search/catalog";
-import { expressionFor, flattenVerse, parseBookIds, parseReference } from "@/app/search/query";
+import { expressionFor, parseBookIds, parseReference } from "@/app/search/query";
+import { readLegacyResults } from "@/app/search/legacy-response";
+import { countResultsByBook } from "@/app/search/search-summary";
 import { fetchReferenceVerses } from "@/app/search/reference-source";
-import type { LegacyRow, SearchMode, SearchResult } from "@/app/search/types";
+import type { SearchMode, SearchResult } from "@/app/search/types";
 
 export const runtime = "edge";
 
@@ -43,6 +45,7 @@ function paginatedResponse(
     expression,
     selectedBookCount,
     source: "mBAB open-text corpus",
+    bookCounts: countResultsByBook(allResults),
   };
 }
 
@@ -120,15 +123,7 @@ export async function GET(request: Request) {
     });
     if (!response.ok) throw new Error(`Search source returned ${response.status}`);
 
-    const payload = (await response.json()) as { results?: LegacyRow[] };
-    const allResults = (payload.results ?? []).map((row) => ({
-      ref: `${row.Book} ${row.Chapter}:${row.Versecount}`,
-      book: row.Book,
-      chapter: Number(row.Chapter),
-      verse: Number(row.Versecount),
-      text: flattenVerse(row.verse),
-      version,
-    }));
+    const allResults = readLegacyResults(await response.json(), version, selectedBooks);
     return json(
       paginatedResponse(
         allResults,
