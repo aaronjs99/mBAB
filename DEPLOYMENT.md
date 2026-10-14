@@ -1,5 +1,7 @@
 # mBAB deployment
 
+Deployment branches: `master` retains the standalone [PythonAnywhere application](https://aaronjs.pythonanywhere.com); `develop` contains the latest [ChatGPT Site](https://mbab-bible-search.aaronjs99.chatgpt.site). See [BRANCHES.md](BRANCHES.md).
+
 mBAB has two production targets. The Django application runs on PythonAnywhere, while the modern public interface is deployed from `sites/` through OpenAI Sites.
 
 ## 1. PythonAnywhere

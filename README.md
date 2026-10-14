@@ -1,5 +1,7 @@
 # mBAB — Multi-Book Advanced Bible Search
 
+Deployment branches: `master` retains the standalone [PythonAnywhere application](https://aaronjs.pythonanywhere.com); `develop` contains the latest [ChatGPT Site](https://mbab-bible-search.aaronjs99.chatgpt.site). See [BRANCHES.md](BRANCHES.md).
+
 mBAB is a focused Scripture search engine for combining words, controlling Boolean logic, and searching an exact set of Bible books. It is available through two maintained web surfaces:
 
 - [Public mBAB Sites app](https://mbab-bible-search.aaronjs99.chatgpt.site) — the modern, public search experience

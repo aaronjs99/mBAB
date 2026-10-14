@@ -24,5 +24,8 @@
 
 ## Git and deployment
 
+- `master` retains the standalone PythonAnywhere application; `develop` holds the latest Sites version. Use `develop` for ongoing Sites development. See `BRANCHES.md`.
+- Publish Sites only from a validated GitHub `develop` commit and record that branch and commit in publication provenance. The native Sites repository's publishing branch is separate.
+- Port selected fixes to `master` individually; do not merge the Sites application and Django refactor into the PythonAnywhere application wholesale.
 - Keep commits coherent and report whether they are local, pushed to GitHub, and deployed to Sites or PythonAnywhere.
 - Sites publishes the exact validated source and build. PythonAnywhere updates should come from a reviewed Git commit followed by a fast-forward pull and reload, never direct production edits.

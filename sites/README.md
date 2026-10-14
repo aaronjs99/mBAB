@@ -2,6 +2,9 @@
 
 The Sites-native frontend for **mBAB — Multi-Book Advanced Bible Search**.
 
+This application is maintained on GitHub's `develop` branch. The standalone
+PythonAnywhere application stays on `master`; see [`BRANCHES.md`](../BRANCHES.md).
+
 ## Product surface
 
 - transparent all-word, any-word, and grouped Boolean search
