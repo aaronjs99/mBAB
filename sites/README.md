@@ -62,6 +62,19 @@ the overview. Counts measure matched verses, not word occurrences or book import
 The API checks source rows and overview totals before exposing them. Older cached
 responses can still display verses without inventing a partial overview.
 
+## Hosted Bible text
+
+Production search and chapter reading use the Site's own bundled text assets.
+They no longer depend on the PythonAnywhere service being online. Local setups
+that specify `MBAB_LEGACY_SEARCH_URL` continue to use the configured Django corpus.
+
+Before a release, install the catalog-approved databases using the existing setup
+workflow, then run `python sites/scripts/export-corpus.py` from the repository root
+and build the Site. The exporter validates every edition and creates ignored
+`sites/public/corpus/` assets with verse counts and SHA-256 provenance. SQLite files
+remain local. Missing text in an edition stays missing; Webster reference markers
+and paragraph fragments are normalized without substituting another edition.
+
 ## Read in context
 
 Each result and saved verse opens a chapter reader without changing the search URL,
@@ -98,9 +111,12 @@ The production-package audit reports zero advisories. The full audit still repor
 the [braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) has no
 published patch. A scoped override applies the published `fflate` 0.7.5 security
 backport to Satori 0.33.5, resolving the three related moderate entries.
-`npm audit --audit-level=high` remains a failing release gate. Do not force an older
-Next or vinext release merely to make the audit output green. Recheck upstream
-releases and run the full validation after changing these packages.
+`npm run audit:dependencies` preserves the complete report and acknowledges only
+this reviewed, development-only braces chain through November 13, 2026 UTC.
+The warning remains unresolved. The check fails on any other high/critical finding,
+runtime reachability, inconsistent audit/lock data, registry failure, or expiry.
+CI separately enforces `npm audit --omit=dev --audit-level=high`. Do not downgrade
+Next or vinext to hide a finding; recheck upstream fixes before renewing the review.
 
 ## Verification
 

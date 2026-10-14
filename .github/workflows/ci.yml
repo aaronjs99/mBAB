@@ -38,8 +38,10 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: find ../searchapp/static/searchapp/scripts/search -name '*.js' -print0 | xargs -0 -n1 node --check
       - run: npm run build:legacy-css && git diff --exit-code -- ../searchapp/static/searchapp/stylesheets/styles.css
-      - run: npm audit --audit-level=high
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run audit:dependencies
       - run: npm run build
       - run: npx tsc --noEmit
       - run: npm run lint
       - run: node --test tests/*.test.mjs
+      - run: npm run test:built

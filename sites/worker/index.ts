@@ -1,8 +1,13 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { createAssetCorpusSource, type AssetBinding } from "../app/search/asset-corpus-source";
+import { handleSearchRequest, type CorpusSource } from "../app/search/search-handler";
+import { handleChapterRequest } from "../app/search/chapter-handler";
 
 interface Env {
+  MBAB_LEGACY_SEARCH_URL?: string;
+  MBAB_CHAPTER_URL?: string;
   ASSETS: {
     fetch(request: Request): Promise<Response>;
   };
@@ -26,9 +31,23 @@ interface ExecutionContext {
 // dangerouslyAllowSVG: true in next.config.js and uncomment below:
 // const imageConfig: ImageConfig = { dangerouslyAllowSVG: true };
 
+const corpusSources = new WeakMap<AssetBinding, CorpusSource>();
+
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    if (request.method === "GET" && !env.MBAB_LEGACY_SEARCH_URL
+      && (url.pathname === "/api/search" || url.pathname === "/api/chapter")) {
+      let source = corpusSources.get(env.ASSETS);
+      if (!source) {
+        source = createAssetCorpusSource(env.ASSETS);
+        corpusSources.set(env.ASSETS, source);
+      }
+      return url.pathname === "/api/search"
+        ? handleSearchRequest(request, source)
+        : handleChapterRequest(request, source);
+    }
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];

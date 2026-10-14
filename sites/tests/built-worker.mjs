@@ -5,7 +5,7 @@ import { convertV4MiniflareOptions, Miniflare } from "miniflare";
 
 // Execute the compiled artifact in the Worker runtime, including cloudflare: imports.
 // This harness has no public listener or outbound service access.
-export function createBuiltWorker() {
+export function createBuiltWorker({ assets } = {}) {
   const root = fileURLToPath(new URL("../dist/server/", import.meta.url));
   const config = JSON.parse(readFileSync(join(root, "wrangler.json"), "utf8"));
   const paths = ["index.js", ...readdirSync(root, { recursive: true }).filter(path => path.endsWith(".js") && path !== "index.js")];
@@ -19,7 +19,7 @@ export function createBuiltWorker() {
       modules: paths.map(path => ({ type: "ESModule", path: join(root, path) })),
       compatibilityDate: config.compatibility_date,
       compatibilityFlags: config.compatibility_flags ?? [],
-      serviceBindings: { ASSETS: async () => new Response("Missing asset", { status: 404 }) },
+      serviceBindings: { ASSETS: assets ?? (async () => new Response("Missing asset", { status: 404 })) },
       outboundService: async () => new Response("Network access disabled in build tests", { status: 503 }),
     }],
   }));
