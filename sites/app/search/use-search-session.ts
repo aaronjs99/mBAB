@@ -41,6 +41,7 @@ export function useSearchSession() {
     params.set("pageSize", "20");
     try {
       const result = await fetch(`/api/search?${params}`, {
+        cache: "no-cache",
         headers: { Accept: "application/json" },
         signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30_000)]),
       });

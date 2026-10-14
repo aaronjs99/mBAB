@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
 
 let server;
 let browserState;
@@ -88,6 +89,13 @@ test("saved verses ignore corrupt records and duplicates while preserving valid 
   assert.deepEqual(browserState.readInitialBrowserState().saved, [savedVerse]);
   assert.equal(browserState.storeSavedVerses([savedVerse]), true);
   assert.deepEqual(JSON.parse(localStorage.getItem("mbab:saved-verses")), [savedVerse]);
+});
+
+test("previously saved WEB verses reopen without raw footnotes or escaped quotes", () => {
+  const fixture = JSON.parse(readFileSync(new URL("../../contracts/verse-text-fixtures.json", import.meta.url), "utf8"))[1];
+  const oldVerse = { ref: "Matthew 1:16", book: "Matthew", chapter: 1, verse: 16, version: "WEB", text: fixture.raw };
+  withBrowser("", { "mbab:saved-verses": JSON.stringify([oldVerse]) });
+  assert.equal(browserState.readInitialBrowserState().saved[0].text, fixture.expected);
 });
 
 test("case-sensitive highlighting marks only matching whole words", () => {

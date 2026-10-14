@@ -5,11 +5,14 @@ import { createBuiltWorker } from "./built-worker.mjs";
 
 const corpusRoot = new URL("../public/corpus/", import.meta.url);
 const realCorpus = existsSync(new URL("manifest.json", corpusRoot));
+const textFixtures = JSON.parse(readFileSync(new URL("../../contracts/verse-text-fixtures.json", import.meta.url), "utf8"));
 const worker = createBuiltWorker({ assets: async request => {
   const match = new URL(request.url).pathname.match(/^\/corpus\/([A-Z]+)\.json$/);
   if (!match) return new Response("Missing", { status: 404 });
   if (realCorpus) return new Response(readFileSync(new URL(`${match[1]}.json`, corpusRoot)), { headers: { "Content-Type": "application/json" } });
-  return Response.json({ schema: 1, version: match[1], rows: [[42, 3, 16, "For God so loved the world"], [42, 3, 17, "God sent his Son"]] });
+  const notes = match[1] === "WEB" ? textFixtures.filter(item => item.version === "WEB" && item.bookId === 39)
+    .map(item => [item.bookId, item.chapter, item.verse, item.raw]) : [];
+  return Response.json({ schema: 1, version: match[1], rows: [...notes, [42, 3, 16, "For God so loved the world"], [42, 3, 17, "God sent his Son"]] });
 } });
 after(() => worker.dispose());
 
@@ -35,4 +38,18 @@ test("every published edition provides real chapter text without the legacy serv
     assert.equal(chapter.version, version);
     assert.ok(chapter.verses.some(item => item.verse === 16 && item.text.length > 20), version);
   }
+});
+
+test("published WEB results and chapter text exclude editorial notes and decode quotation marks", async () => {
+  const response = await worker.dispatchFetch("https://mbab.test/api/search?q=Jesus&version=WEB&books=39");
+  assert.equal(response.status, 200);
+  const results = (await response.json()).results;
+  assert.equal(results[0].text, textFixtures[0].expected);
+  assert.equal(results[1].text, textFixtures[1].expected);
+  const notes = await worker.dispatchFetch("https://mbab.test/api/search?q=Yehoshua&version=WEB&books=39");
+  assert.equal((await notes.json()).total, 0);
+  const chapter = await worker.dispatchFetch("https://mbab.test/api/chapter?book=Matthew&chapter=1&version=WEB");
+  const reading = await chapter.json();
+  assert.equal(reading.verses.find(item => item.verse === 16).text, textFixtures[1].expected);
+  assert.equal(reading.verses.find(item => item.verse === 20).text, textFixtures[2].expected);
 });

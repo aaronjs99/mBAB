@@ -32,6 +32,7 @@ function useChapter(target: ChapterKey | null, session: number): ChapterState {
       try {
         const params = new URLSearchParams({ book: book!, chapter: String(chapter), version: version! });
         const response = await fetch(`/api/chapter?${params}`, {
+          cache: "no-cache",
           headers: { Accept: "application/json" },
           signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30_000)]),
         });

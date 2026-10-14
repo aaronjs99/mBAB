@@ -1,6 +1,7 @@
 import { readSearchLocation } from "./search-location";
 import { isSearchResult } from "./search-response";
 import type { SearchLocation, SearchResult } from "./types";
+import { normalizeVerseText } from "./verse-text";
 
 const SAVED_KEY = "mbab:saved-verses";
 const THEME_KEY = "mbab:theme";
@@ -29,7 +30,8 @@ export function readInitialBrowserState(): InitialBrowserState {
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
-      }).slice(0, 100);
+      }).map(item => ({ ...item, text: normalizeVerseText(item.text, item.version) }))
+        .filter(isSearchResult).slice(0, 100);
     }
   } catch {
     // Leave unreadable data intact; search must still work without storage.

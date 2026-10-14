@@ -1,5 +1,6 @@
 import { BOOKS, isVersion } from "./catalog";
 import type { SearchResult } from "./types";
+import { normalizeVerseText } from "./verse-text";
 
 export type CorpusRow = readonly [bookId: number, chapter: number, verse: number, text: string];
 export type BundledCorpus = { schema: 1; version: string; rows: CorpusRow[] };
@@ -21,7 +22,7 @@ export function parseBundledCorpus(payload: unknown, expectedVersion: string): B
     throw new Error("The bundled corpus has an invalid schema, edition, or verse collection.");
   }
   const seen = new Set<string>();
-  const rows: CorpusRow[] = value.rows.map((row: unknown) => {
+  const rows: CorpusRow[] = value.rows.flatMap((row: unknown): CorpusRow[] => {
     if (!Array.isArray(row) || row.length !== 4 || !validBookId(row[0])
       || !positiveInteger(row[1]) || !positiveInteger(row[2])
       || typeof row[3] !== "string" || !row[3].trim()) {
@@ -30,8 +31,11 @@ export function parseBundledCorpus(payload: unknown, expectedVersion: string): B
     const key = `${row[0]}:${row[1]}:${row[2]}`;
     if (seen.has(key)) throw new Error("The bundled corpus contains duplicate verses.");
     seen.add(key);
-    return [row[0], row[1], row[2], row[3]];
+    const text = normalizeVerseText(row[3], expectedVersion);
+    // WEB also uses note-only rows for omitted manuscript readings.
+    return text.trim() ? [[row[0], row[1], row[2], text]] : [];
   });
+  if (!rows.length) throw new Error("The bundled corpus contains no verse text.");
   rows.sort((left, right) => left[0] - right[0] || left[1] - right[1] || left[2] - right[2]);
   return { schema: 1, version: expectedVersion, rows };
 }

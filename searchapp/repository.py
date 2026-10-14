@@ -10,6 +10,7 @@ from typing import Callable
 
 from .catalog import DEFAULT_VERSION, normalize_version
 from .query import CompiledQuery
+from .verse_text import plain_verse_text
 
 
 DatabasePathResolver = Callable[[str], Path]
@@ -54,7 +55,7 @@ class BibleRepository:
             "REGEXP",
             2,
             lambda pattern, value: regexp_matches(
-                pattern, value, self.case_sensitive
+                pattern, plain_verse_text(value, self.version), self.case_sensitive
             ),
         )
         return database
@@ -67,7 +68,10 @@ class BibleRepository:
         )
         with closing(self._connect()) as database:
             rows = database.execute(command, query.parameters).fetchall()
-        return [dict(row) for row in rows]
+        return [
+            {**dict(row), "verse": text} for row in rows
+            if (text := plain_verse_text(row["verse"], self.version)).strip()
+        ]
 
     def chapter(self, book_id: int, chapter: int) -> list[dict[str, object]]:
         """Return one complete chapter in verse order."""
@@ -77,4 +81,7 @@ class BibleRepository:
                 "WHERE Book = ? AND Chapter = ? ORDER BY Versecount",
                 (book_id, chapter),
             ).fetchall()
-        return [dict(row) for row in rows]
+        return [
+            {**dict(row), "text": text} for row in rows
+            if (text := plain_verse_text(row["text"], self.version)).strip()
+        ]

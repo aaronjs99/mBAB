@@ -1,0 +1,66 @@
+[
+  {
+    "version": "WEB",
+    "bookId": 39,
+    "chapter": 1,
+    "verse": 1,
+    "raw": "The book of the generation of Jesus Christ{Christ (Greek) and Messiah (Hebrew) both mean \\\"Anointed One\\\"}, the son of David, the son of Abraham.",
+    "expected": "The book of the generation of Jesus Christ, the son of David, the son of Abraham."
+  },
+  {
+    "version": "WEB",
+    "bookId": 39,
+    "chapter": 1,
+    "verse": 16,
+    "raw": "Jacob became the father of Joseph, the husband of Mary, from whom was born Jesus{\\\"Jesus\\\" is a Greek variant of the Jewish name \\\"Yehoshua,\\\" which means \\\"Yah saves.\\\" \\\"Jesus\\\" is also the masculine form of \\\"Yeshu'ah,\\\" which means \\\"Salvation.\\\"}, who is called Christ.",
+    "expected": "Jacob became the father of Joseph, the husband of Mary, from whom was born Jesus, who is called Christ."
+  },
+  {
+    "version": "WEB",
+    "bookId": 39,
+    "chapter": 1,
+    "verse": 20,
+    "raw": "But when he thought about these things, behold, an angel of the Lord appeared to him in a dream, saying, \\\"Joseph, son of David, don't be afraid to take to yourself Mary, your wife, for that which is conceived in her is of the Holy Spirit.",
+    "expected": "But when he thought about these things, behold, an angel of the Lord appeared to him in a dream, saying, \"Joseph, son of David, don't be afraid to take to yourself Mary, your wife, for that which is conceived in her is of the Holy Spirit."
+  },
+  {
+    "version": "DBY",
+    "bookId": 18,
+    "chapter": 3,
+    "verse": 1,
+    "raw": "{A Psalm of David, when he fled from Absalom his son.} Jehovah, how many are they that trouble me, many they that rise up against me!",
+    "expected": "{A Psalm of David, when he fled from Absalom his son.} Jehovah, how many are they that trouble me, many they that rise up against me!"
+  },
+  {
+    "version": "DBY",
+    "bookId": 6,
+    "chapter": 1,
+    "verse": 1,
+    "raw": "After the death of Joshua the people of Israel inquired of the LORD, \\\"Who shall go up first for us against the Canaanites, to fight against them?\\\"",
+    "expected": "After the death of Joshua the people of Israel inquired of the LORD, \"Who shall go up first for us against the Canaanites, to fight against them?\""
+  },
+  {
+    "version": "KJV",
+    "bookId": 0,
+    "chapter": 1,
+    "verse": 1,
+    "raw": "Keep {literal braces}, [supplied words], and \"quoted words\" unchanged.",
+    "expected": "Keep {literal braces}, [supplied words], and \"quoted words\" unchanged."
+  },
+  {
+    "version": "WEB",
+    "bookId": 0,
+    "chapter": 1,
+    "verse": 1,
+    "raw": "Before {a note} the word{another note}, with [supplied words] intact.",
+    "expected": "Before the word, with [supplied words] intact."
+  },
+  {
+    "version": "WEB",
+    "bookId": 43,
+    "chapter": 8,
+    "verse": 37,
+    "raw": "{TR adds \\\"Philip said, 'If you believe with all your heart, you may.' He answered, 'I believe that Jesus Christ is the Son of God.'\\\"}",
+    "expected": ""
+  }
+]

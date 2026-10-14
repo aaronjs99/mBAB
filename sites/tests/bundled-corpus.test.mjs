@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { createServer } from "vite";
+import { readFileSync } from "node:fs";
+
+const textFixtures = JSON.parse(readFileSync(new URL("../../contracts/verse-text-fixtures.json", import.meta.url), "utf8"));
 
 let server;
 let parseBundledCorpus;
@@ -29,6 +32,33 @@ after(async () => { await server?.close(); });
 function search(expression, options = { bookIds: [0, 42, 65] }) {
   return searchBundledCorpus(parseBundledCorpus(payload, "KJV"), expression, options).map(result => result.ref);
 }
+
+test("chapter text separates WEB annotations and decodes source quotes without changing other editions", () => {
+  for (const fixture of textFixtures.filter(item => item.expected)) {
+    const source = { schema: 1, version: fixture.version, rows: [[fixture.bookId, fixture.chapter, fixture.verse, fixture.raw]] };
+    const corpus = parseBundledCorpus(source, fixture.version);
+    assert.equal(readBundledChapter(corpus, fixture.bookId, fixture.chapter)[0].text, fixture.expected);
+    assert.equal(source.rows[0][3], fixture.raw);
+  }
+});
+
+test("WEB manuscript-note-only entries are omissions rather than empty or fabricated verses", () => {
+  const note = textFixtures.find(item => item.version === "WEB" && item.bookId === 43 && item.verse === 37);
+  let corpus;
+  assert.doesNotThrow(() => {
+    corpus = parseBundledCorpus({ schema: 1, version: "WEB", rows: [[43, 8, 36, "They came to some water."], [43, 8, 37, note.raw]] }, "WEB");
+  });
+  assert.deepEqual(readBundledChapter(corpus, 43, 8).map(item => item.verse), [36]);
+  assert.deepEqual(searchBundledCorpus(corpus, "Philip", { bookIds: [43] }), []);
+});
+
+test("WEB search counts and matches verse words rather than embedded footnotes", () => {
+  const rows = textFixtures.filter(item => item.version === "WEB" && item.bookId === 39)
+    .map(item => [item.bookId, item.chapter, item.verse, item.raw]);
+  const corpus = parseBundledCorpus({ schema: 1, version: "WEB", rows }, "WEB");
+  assert.deepEqual(searchBundledCorpus(corpus, "Greek,Yehoshua", { bookIds: [39] }), []);
+  assert.deepEqual(searchBundledCorpus(corpus, "Jesus", { bookIds: [39] }).map(item => item.ref), ["Matthew 1:1", "Matthew 1:16"]);
+});
 
 test("bundled Boolean search uses AND precedence and explicit groups in canonical order", () => {
   assert.deepEqual(search("love,hope+works"), ["Genesis 1:1", "John 3:16", "John 3:17", "John 3:18"]);
