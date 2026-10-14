@@ -1,4 +1,4 @@
-import { BOOKS, modeDescription } from "@/app/search/catalog";
+import { SEARCH_MODES } from "@/app/search/catalog";
 import { parseReference } from "@/app/search/query";
 import type { BibleVersion, SearchMode, SearchResponse, SearchResult } from "@/app/search/types";
 import { HighlightedText } from "./HighlightedText";
@@ -26,15 +26,24 @@ export function SearchResults({ response, query, mode, caseSensitive, draftChang
   const last = Math.min(response.page * response.pageSize, response.total);
   const resultLabel = response.total === 1 ? "verse" : "verses";
   const reference = parseReference(query);
+  const logic = reference ? "Reference" : SEARCH_MODES.find(item => item.id === mode)?.label;
   return (
-    <section className="results-layout" id="search-results" aria-labelledby="results-heading" aria-busy={loading}>
+    <section className="results-layout results-reading" id="search-results" aria-labelledby="results-heading" aria-busy={loading}>
       <div className="results-main">
-        {draftChanged && <p className="draft-notice">Search settings changed. Search again to update these results.</p>}
+        {draftChanged && <p className="draft-notice">Settings changed. Search to update these results.</p>}
         <div className="results-head">
-          <div><p className="eyebrow">{edition.short} · {response.selectedBookCount} {response.selectedBookCount === 1 ? "book" : "books"}</p><h2 id="results-heading">{response.total.toLocaleString()} {resultLabel} found</h2></div>
+          <div className="results-summary">
+            <p className="eyebrow" title={edition.label}>{edition.short} · {response.selectedBookCount} {response.selectedBookCount === 1 ? "book" : "books"}</p>
+            <h2 id="results-heading">{response.total.toLocaleString()} {resultLabel} found</h2>
+            <p className="results-query expression">
+              <code className="submitted-query">{response.expression}</code>
+              <span className="results-logic">{logic}</span>
+              {caseSensitive && !reference && <span className="results-case">Match case</span>}
+            </p>
+          </div>
           <div className="results-actions">
             <span>{first}–{last} of {response.total.toLocaleString()}</span>
-            <button type="button" onClick={onShare}>Share search</button>
+            <button type="button" aria-label="Share search" onClick={onShare}>Share</button>
           </div>
         </div>
 
@@ -44,17 +53,16 @@ export function SearchResults({ response, query, mode, caseSensitive, draftChang
         />}
 
         {response.results.length ? (
-          <div className="result-list">
-            {response.results.map((result, index) => {
+          <div className="result-list reading-list">
+            {response.results.map(result => {
               const isSaved = saved.some((item) => item.version === result.version && item.ref === result.ref);
               return (
                 <article className="result-card" key={`${result.version}:${result.ref}`}>
-                  <div className="result-number" aria-hidden="true">{String(index + 1 + (response.page - 1) * response.pageSize).padStart(2, "0")}</div>
                   <div className="result-content">
                     <p className="result-ref">{result.ref} <span>{result.version}</span></p>
                     <blockquote><HighlightedText text={result.text} query={response.expression} caseSensitive={caseSensitive} /></blockquote>
                     <div className="result-tools">
-                      <button type="button" onClick={() => onRead(result)}>Read in context</button>
+                      <button type="button" aria-label="Read in context" onClick={() => onRead(result)}>Read</button>
                       <button type="button" onClick={() => onCopy(`${result.ref} (${result.version}) — ${result.text}`, `${result.ref} copied.`)}>Copy</button>
                       <button type="button" className={isSaved ? "saved" : ""} onClick={() => onToggleSaved(result)} aria-pressed={isSaved}>{isSaved ? "Saved" : "Save"}</button>
                     </div>
@@ -63,29 +71,17 @@ export function SearchResults({ response, query, mode, caseSensitive, draftChang
               );
             })}
           </div>
-        ) : <div className="empty-state"><p className="eyebrow">No matches yet</p><h3>{reference ? "Check the reference and scope." : "Try a wider thread."}</h3><p>{reference ? "Check the chapter and verse numbers, and include this book in your selection." : "Switch to “Any word,” choose more books, or simplify the advanced expression."}</p></div>}
+        ) : <div className="empty-state"><p>{reference ? "No verses in this reference and book selection." : "No matches. Try different words or books."}</p></div>}
 
         {response.totalPages > 1 && (
           <nav className="pagination" aria-label="Search result pages">
-            <button type="button" disabled={response.page === 1 || loading} onClick={() => onPage(response.page - 1)}>← Previous</button>
+            <button type="button" disabled={response.page === 1 || loading} onClick={() => onPage(response.page - 1)}>Previous</button>
             <span>Page <strong>{response.page}</strong> of {response.totalPages}</span>
-            <button type="button" disabled={response.page === response.totalPages || loading} onClick={() => onPage(response.page + 1)}>Next →</button>
+            <button type="button" disabled={response.page === response.totalPages || loading} onClick={() => onPage(response.page + 1)}>Next</button>
           </nav>
         )}
       </div>
 
-      <aside className="query-inspector" aria-label="Query explanation">
-        <p className="eyebrow">Query anatomy</p>
-        <h3>Your search, made visible.</h3>
-        <div className="expression"><span>Expression</span><code>{response.expression}</code></div>
-        <dl>
-          <div><dt>Logic</dt><dd>{reference ? "Direct reference" : modeDescription(mode)}</dd></div>
-          <div><dt>Scope</dt><dd>{response.selectedBookCount === BOOKS.length ? "The whole Bible" : `${response.selectedBookCount} selected ${response.selectedBookCount === 1 ? "book" : "books"}`}</dd></div>
-          <div><dt>Edition</dt><dd>{edition.label}</dd></div>
-          <div><dt>Case</dt><dd>{caseSensitive ? "Match case" : "Ignore case"}</dd></div>
-        </dl>
-        <p className="inspector-note">mBAB never hides the query behind an algorithm. What you type is what the index evaluates.</p>
-      </aside>
     </section>
   );
 }

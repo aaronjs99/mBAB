@@ -70,38 +70,37 @@ export function ChapterReader({ selection, chapter, comparison, comparisonVersio
       }}
     >
       <header className="reader-header">
-        <div><p className="eyebrow">From your search to the page</p><h2 id="reader-heading">{title} <span>· Read in context</span></h2></div>
-        <button className="reader-close" type="button" onClick={onClose} aria-label="Close reader">Close <span aria-hidden="true">×</span></button>
-        <p id="reader-description">{edition.label} · Verse {result.verse} is marked below.</p>
+        <div><h2 id="reader-heading">{title}<span className="sr-only"> · Read in context</span></h2></div>
+        <button className="reader-close" type="button" onClick={onClose} aria-label="Close reader"><span aria-hidden="true">×</span></button>
+        <p id="reader-description">{edition.label} · Verse {result.verse}</p>
       </header>
       <div className="reader-controls">
         <div className="reader-scope">
-          <span>{expanded ? "Full chapter" : "Nearby verses"}</span>
           <button type="button" disabled={!chapter.data} aria-pressed={expanded} onClick={() => onExpand(!expanded)}>{expanded ? "Back to nearby verses" : "Read full chapter"}</button>
         </div>
-        <label className="reader-compare-label">Compare edition
+        <label className="reader-compare-label"><span className="sr-only">Compare edition</span>
           <select value={comparisonVersion} disabled={!chapter.data} onChange={event => onCompare(event.target.value)}>
-            <option value="">No comparison</option>
+            <option value="">Compare editions</option>
             {VERSIONS.filter(item => item.id !== result.version).map(item => <option key={item.id} value={item.id}>{item.short} · {item.label}</option>)}
           </select>
         </label>
       </div>
-      {comparedEdition && (
+      {comparedEdition && (comparison.loading || comparison.error) && (
         <div className="reader-comparison">
           <strong>{comparedEdition.label}</strong>
           {comparison.loading && <p role="status"><span className="spinner" aria-hidden="true" /> Loading comparison…</p>}
           {comparison.error && <div role="alert"><p>{comparison.error}</p>{comparison.retryable && <button type="button" onClick={comparison.retry}>Retry comparison</button>}</div>}
-          {comparison.data && <p>Aligned by verse number. Wording and verse coverage may differ.</p>}
         </div>
       )}
       <div className="reader-body" ref={bodyRef} tabIndex={0} aria-label="Chapter verses" aria-busy={chapter.loading}>
+        {comparison.data && comparedEdition && <div className="reader-column-heads"><span>{edition.label}</span><span>{comparedEdition.label}</span></div>}
         {chapter.loading && <p className="reader-message" role="status"><span className="spinner" aria-hidden="true" /> Loading {title}…</p>}
         {chapter.error && <div className="reader-message" role="alert"><p>{chapter.error}</p>{chapter.retryable && <button type="button" onClick={chapter.retry}>Retry chapter</button>}</div>}
         {chapter.data && !primary.has(result.verse) && <p role="status">The selected verse is not present in this chapter text.</p>}
         {chapter.data && <div className={`reader-verses${comparisonVersion ? " comparing" : ""}`}>
           {verseNumbers.map(verse => (
             <article className={`reader-verse${verse === result.verse ? " current" : ""}`} key={verse} data-verse={verse} aria-current={verse === result.verse ? "location" : undefined}>
-              <div className="reader-verse-number"><span>{verse}</span>{verse === result.verse && <small>Selected</small>}</div>
+              <div className="reader-verse-number"><span>{verse}</span></div>
               <p className="reader-primary"><span className="reader-edition">{result.version}</span>{primary.has(verse)
                 ? <HighlightedText text={primary.get(verse)!} query={query} caseSensitive={caseSensitive} />
                 : <em>This verse is not present in this edition.</em>}</p>
@@ -112,7 +111,7 @@ export function ChapterReader({ selection, chapter, comparison, comparisonVersio
           ))}
         </div>}
       </div>
-      <p className="reader-footnote">{result.ref} · {result.version}{comparisonVersion ? ` / ${comparisonVersion}` : ""} <span>Esc to return to search</span></p>
+      <p className="reader-footnote">{result.ref} · {result.version}{comparisonVersion ? ` / ${comparisonVersion}` : ""} <span><kbd>Esc</kbd></span></p>
     </dialog>
   );
 }

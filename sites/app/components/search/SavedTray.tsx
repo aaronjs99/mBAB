@@ -11,7 +11,7 @@ export function SavedTray({ items, onClose, onRemove, onRead }: Props) {
   return (
     <section className="saved-tray" aria-label="Saved verses">
       <div className="saved-tray-head">
-        <div><p className="eyebrow">Your reading desk</p><h2>Saved on this device</h2></div>
+        <div><h2>Saved verses</h2><p>On this device</p></div>
         <button className="text-button" type="button" onClick={onClose}>Close</button>
       </div>
       {items.length ? (
@@ -24,7 +24,7 @@ export function SavedTray({ items, onClose, onRemove, onRead }: Props) {
             </article>
           ))}
         </div>
-      ) : <p className="empty-copy">Save a verse from any result and it will wait here for you.</p>}
+      ) : <p className="empty-copy">No saved verses yet.</p>}
     </section>
   );
 }

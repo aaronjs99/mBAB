@@ -16,7 +16,7 @@ test("reader loads real context, expands the chapter, compares editions and retu
   await expect(dialog.locator(".reader-verse")).toHaveCount(5);
   await expect(dialog.locator(".reader-verse.current")).toContainText("only begotten Son");
   await dialog.getByLabel("Compare edition").selectOption("WEB");
-  await expect(dialog.locator(".reader-comparison")).toContainText("World English Bible");
+  await expect(dialog.locator(".reader-column-heads")).toContainText("World English Bible");
   await expect(dialog.locator(".reader-verse.current .reader-secondary")).toContainText("one and only Son");
   const bounds = await dialog.boundingBox();
   expect(bounds!.y).toBeGreaterThanOrEqual(0);
@@ -92,7 +92,7 @@ test("rapid comparison changes never display an earlier edition under a new labe
   await expect(dialog.locator(".reader-verse.current .reader-verse-number")).toBeInViewport();
   release();
   await expect(dialog).not.toContainText("STALE ASV RESPONSE");
-  await expect(dialog.locator(".reader-comparison")).toContainText("World English Bible");
+  await expect(dialog.locator(".reader-column-heads")).toContainText("World English Bible");
 });
 
 test("comparison errors, wrong identities and missing verses stay honest", async ({ page }) => {

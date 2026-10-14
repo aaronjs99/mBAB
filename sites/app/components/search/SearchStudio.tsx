@@ -9,17 +9,17 @@ import { applyTheme, readInitialBrowserState, storeSavedVerses } from "@/app/sea
 import { searchParamsFor } from "@/app/search/search-location";
 import { useSearchSession } from "@/app/search/use-search-session";
 import { useChapterReader } from "@/app/search/use-chapter-reader";
-import type { SearchExample, SearchMode, SearchResult } from "@/app/search/types";
-import { HowItWorks } from "./HowItWorks";
+import type { SearchExample, SearchResult } from "@/app/search/types";
+import { SearchHelp } from "./SearchHelp";
 import { ChapterReader } from "./ChapterReader";
 import { SavedTray } from "./SavedTray";
 import { SearchForm } from "./SearchForm";
 import { SearchResults } from "./SearchResults";
 
 const EXAMPLES: SearchExample[] = [
+  { query: "John 3:16", mode: "all", label: "John 3:16" },
   { query: "love mercy", mode: "all", label: "love + mercy" },
   { query: "peace hope", mode: "any", label: "peace or hope" },
-  { query: "(faith+works),grace", mode: "advanced", label: "faith, works & grace" },
 ];
 
 function sameIds(left: number[], right: readonly number[]) {
@@ -127,35 +127,21 @@ export function SearchStudio() {
     applyTheme(next);
   }
 
-  function returnToSearch(nextMode?: SearchMode) {
-    if (nextMode) setDraft((current) => ({ ...current, mode: nextMode }));
-    document.getElementById("search-heading")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    window.setTimeout(() => document.getElementById("query")?.focus(), 450);
-  }
-
-  function openBookPicker() {
-    setShowBooks(true);
-    window.setTimeout(
-      () => document.getElementById("book-picker")?.scrollIntoView({ behavior: "smooth", block: "center" }),
-      50,
-    );
-  }
-
   return (
-    <div className="site-shell">
+    <div className={`site-shell${completed ? " has-results" : ""}`}>
       <a className="skip-link" href="#main-content">Skip to search</a>
       <header className="topbar">
         <Link className="brand" href="/" aria-label="mBAB home">
-          <span className="brand-mark" aria-hidden="true"><span>m</span>B</span>
-          <span className="brand-copy"><strong>mBAB</strong><small>Multi-Book Advanced Bible Search</small></span>
+          <svg className="brand-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1m0-15c3-2 6-2 9-1v15c-3-1-6-1-9 1V5Z" /></svg>
+          <strong>mBAB</strong>
         </Link>
         <nav className="topnav" aria-label="Primary navigation">
-          <a href="#how-it-works">How it works</a>
+          <SearchHelp />
           <button className="nav-button" type="button" onClick={() => setSavedOpen((value) => !value)} aria-expanded={savedOpen}>
             Saved <span className="count-badge">{saved.length}</span>
           </button>
           <button className="icon-button" type="button" onClick={toggleTheme} aria-label={`Use ${dark ? "light" : "dark"} theme`}>
-            <span aria-hidden="true">{dark ? "☀" : "◐"}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">{dark ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> : <path d="M20 15A8 8 0 0 1 9 4a8.5 8.5 0 1 0 11 11Z" />}</svg>
           </button>
         </nav>
       </header>
@@ -169,10 +155,7 @@ export function SearchStudio() {
 
       <main id="main-content">
         <section className="search-intro">
-          <p className="eyebrow"><span className="live-dot" aria-hidden="true" /> 11 editions · 66 books · one clear search</p>
-          <h1>Search Scripture.<span>See the pattern.</span></h1>
-          <p className="intro-copy">Explore a word, connect ideas, or trace a theme across exactly the books you choose.</p>
-          <div className="intro-proof" aria-label="Search features"><span>Transparent logic</span><span>No account needed</span><span>No ads</span></div>
+          <h1 id="search-heading">Search the Bible</h1>
         </section>
 
         <SearchForm
@@ -186,6 +169,7 @@ export function SearchStudio() {
           loading={loading}
           ready={ready}
           examples={EXAMPLES}
+          hasResults={completed !== null}
           onQueryChange={(value) => setDraft((current) => ({ ...current, query: value }))}
           onModeChange={(value) => setDraft((current) => ({ ...current, mode: value }))}
           onVersionChange={(value) => setDraft((current) => ({ ...current, version: value }))}
@@ -231,20 +215,11 @@ export function SearchStudio() {
           />
         )}
 
-        <HowItWorks
-          firstExample={EXAMPLES[0]}
-          onExample={performSearch}
-          onChooseBooks={openBookPicker}
-          onReturnToSearch={returnToSearch}
-        />
-        <section className="principles-strip" aria-label="mBAB principles">
-          <p>11 open editions</p><p>Transparent logic</p><p>Local saved verses</p><p>No ads</p>
-        </section>
       </main>
 
       <footer>
-        <div><Link className="brand footer-brand" href="/"><span className="brand-mark" aria-hidden="true"><span>m</span>B</span><span className="brand-copy"><strong>mBAB</strong><small>Search Scripture with intention.</small></span></Link></div>
-        <div className="footer-note"><p>Searching public-domain and open-text editions from the mBAB corpus. UKJV credit: I love Jesus (UKJV).</p><p>Saved verses stay on this device · Made with care by Aaron John Sabu · <a href="https://github.com/aaronjs99/mBAB">View the source</a></p></div>
+        <span>Aaron John Sabu</span>
+        <div className="footer-links"><a href="https://github.com/aaronjs99/mBAB">Source</a><details className="edition-credits"><summary>Text credits</summary><div><p>UKJV: I love Jesus (UKJV).</p>{VERSIONS.map(item => <a key={item.id} href={item.infoUrl} target="_blank" rel="noreferrer">{item.short} · {item.label}</a>)}</div></details></div>
       </footer>
     </div>
   );

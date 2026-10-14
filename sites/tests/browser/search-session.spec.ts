@@ -34,10 +34,9 @@ test("editing the form leaves existing results and their labels tied to the subm
   await page.locator("#query").fill("peace");
   await page.locator("#version").selectOption("WEB");
   await page.getByRole("button", { name: "Any word", exact: true }).click();
-  await expect(page.locator(".query-inspector")).toContainText("King James Version");
-  await expect(page.locator(".query-inspector")).not.toContainText("World English Bible");
+  await expect(page.locator(".results-head .eyebrow")).toHaveAttribute("title", "King James Version");
   await expect(page.locator(".result-content mark").first()).toHaveText(/love/i);
-  await expect(page.getByText("Search settings changed. Search again to update these results.")).toBeVisible();
+  await expect(page.getByText("Settings changed. Search to update these results.")).toBeVisible();
 });
 
 test("pagination keeps the submitted search even when the form has unsent edits", async ({ page }) => {
@@ -46,7 +45,7 @@ test("pagination keeps the submitted search even when the form has unsent edits"
   await page.locator("#query").fill("peace");
   await page.locator("#version").selectOption("WEB");
   const nextRequest = page.waitForRequest(request => request.url().includes("/api/search?"));
-  await page.getByRole("button", { name: "Next →", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
   const params = new URL((await nextRequest).url()).searchParams;
   expect(params.get("q")).toBe("love");
   expect(params.get("version")).toBe("KJV");
@@ -71,9 +70,11 @@ test("successful searches support browser back and forward", async ({ page }) =>
 test("share links preserve case matching and the current result page", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
+  await expect(page.getByRole("button", { name: "Search", exact: true })).toBeEnabled();
+  await page.getByLabel("Search options", { exact: true }).click();
   await page.getByLabel("Match case").check();
   await search(page, "love");
-  await page.getByRole("button", { name: "Next →", exact: true }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.locator(".pagination")).toContainText("Page 2 of");
   await page.getByRole("button", { name: "Share search", exact: true }).click();
   await expect(page.getByText("Share link copied.", { exact: true }).last()).toBeVisible();
@@ -165,8 +166,8 @@ test("a reference range loads real verses from the local corpus", async ({ page 
   await expect(page.locator(".result-ref")).toHaveText(["John 3:16 WEB", "John 3:17 WEB", "John 3:18 WEB"]);
   await expect(page.locator(".result-content blockquote").first()).toContainText("God so loved the world");
   await expect(page.locator(".result-content mark")).toHaveCount(0);
-  await expect(page.locator(".query-inspector")).toContainText("World English Bible");
-  await expect(page.locator(".query-inspector")).toContainText("Direct reference");
+  await expect(page.locator(".results-head .eyebrow")).toHaveAttribute("title", "World English Bible");
+  await expect(page.locator(".results-logic")).toHaveText("Reference");
 });
 
 test("saved verses survive reload and can be removed from the saved tray", async ({ page }) => {
@@ -264,12 +265,12 @@ test("desktop and mobile search results render without console or layout errors"
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/?q=John+3%3A16-18&version=KJV&books=42");
   await expect(page).toHaveTitle("mBAB — Multi-Book Advanced Bible Search");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Search Scripture");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Search the Bible");
   await expect(page.locator("#results-heading")).toHaveText("3 verses found");
   await page.locator("#query").fill("peace");
   await page.locator("#version").selectOption("WEB");
   await expect(page.locator(".draft-notice")).toBeVisible();
-  await expect(page.locator(".query-inspector")).toContainText("King James Version");
+  await expect(page.locator(".results-head .eyebrow")).toHaveAttribute("title", "King James Version");
   await expect(page.locator("vite-error-overlay, nextjs-portal")).toHaveCount(0);
   const output = process.env.MBAB_SCREENSHOTS;
   if (output) {

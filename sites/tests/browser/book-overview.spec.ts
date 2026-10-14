@@ -8,8 +8,9 @@ test("overview totals cover every page and narrow the submitted search with back
   expect(payload.bookCounts.reduce((sum: number, book: { count: number }) => sum + book.count, 0)).toBe(payload.total);
   await page.goto(initial);
   await expect(page.locator(".pagination")).toContainText("Page 2");
+  await page.locator(".book-overview > summary").click();
   const overview = page.getByRole("region", { name: "Matches by book", exact: true });
-  await expect(overview).toContainText(`Across all ${payload.total.toLocaleString()} matched verses`);
+  await expect(overview).toContainText(`${payload.total.toLocaleString()} matched verses`);
   const johnCount = payload.bookCounts.find((book: { bookId: number }) => book.bookId === 42).count;
   await expect(overview.getByRole("button", { name: `Narrow to John: ${johnCount} matched verses`, exact: true })).toBeVisible();
   await page.locator("#query").fill("peace");
@@ -22,7 +23,7 @@ test("overview totals cover every page and narrow the submitted search with back
   await expect(page.locator("#results-heading")).toHaveText(`${johnCount} verses found`);
   await page.goBack();
   await expect(page.locator(".pagination")).toContainText("Page 2");
-  await expect(overview).toContainText(`Across all ${payload.total.toLocaleString()} matched verses`);
+  await expect(overview).toContainText(`${payload.total.toLocaleString()} matched verses`);
 });
 
 test("overview expands and remains usable on mobile without overflow", async ({ page }) => {
@@ -31,6 +32,9 @@ test("overview expands and remains usable on mobile without overflow", async ({ 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/?q=love&version=KJV");
+  await expect(page.locator("#results-heading")).toBeVisible();
+  await expect(page.locator(".book-overview")).not.toHaveAttribute("open");
+  await page.locator(".book-overview > summary").click();
   const overview = page.getByRole("region", { name: "Matches by book", exact: true });
   await expect(overview).toBeVisible();
   await expect(overview.locator(".book-match")).toHaveCount(8);
