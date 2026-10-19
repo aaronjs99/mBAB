@@ -51,6 +51,32 @@ export function SearchResults({ response, query, mode, caseSensitive, draftChang
           </div>
         </div>
 
+        {related && related.terms.length > 0 && <section className="related-words" aria-labelledby="related-words-heading">
+          <h3 className="related-words-heading" id="related-words-heading">Related words</h3>
+          <div className="related-terms">
+            {related.terms.map(term => <button
+              className="related-term" key={term} type="button" disabled={loading}
+              aria-label={`Search related word: ${term}`} onClick={() => onSearchRelated([term])}
+            >{term}</button>)}
+          </div>
+          <details className="related-preview" key={relatedKey}>
+            <summary className="related-preview-summary">
+              <span>Preview verses</span>
+              <span className="related-words-count">{related.total.toLocaleString()} {related.total === 1 ? "verse" : "verses"}</span>
+            </summary>
+            <div className="related-words-content">
+              <div className="related-verse-list">
+                {related.results.map(result => <VerseCard
+                  key={`${result.version}:${result.ref}`} result={result} query={relatedExpression} caseSensitive={caseSensitive}
+                  isSaved={saved.some(item => item.version === result.version && item.ref === result.ref)}
+                  onRead={() => onRead(result, relatedExpression)} onCopy={onCopy} onToggleSaved={onToggleSaved}
+                />)}
+              </div>
+              <button className="related-search" type="button" disabled={loading} onClick={() => onSearchRelated(related.terms)}>Search related words</button>
+            </div>
+          </details>
+        </section>}
+
         {!reference && !!response.bookCounts?.length && <BookOverview
           counts={response.bookCounts} total={response.total} loading={loading}
           canNarrow={response.selectedBookCount > 1} onNarrow={onNarrow}
@@ -74,23 +100,6 @@ export function SearchResults({ response, query, mode, caseSensitive, draftChang
           </nav>
         )}
 
-        {related && <details className="related-words" key={relatedKey}>
-          <summary className="related-words-summary">
-            <span>Related words</span>
-            <span className="related-words-terms">{related.terms.join(", ")}</span>
-            <span className="related-words-count">{related.total.toLocaleString()} {related.total === 1 ? "verse" : "verses"}</span>
-          </summary>
-          <div className="related-words-content">
-            <div className="related-verse-list">
-              {related.results.map(result => <VerseCard
-                key={`${result.version}:${result.ref}`} result={result} query={relatedExpression} caseSensitive={caseSensitive}
-                isSaved={saved.some(item => item.version === result.version && item.ref === result.ref)}
-                onRead={() => onRead(result, relatedExpression)} onCopy={onCopy} onToggleSaved={onToggleSaved}
-              />)}
-            </div>
-            <button className="related-search" type="button" disabled={loading} onClick={() => onSearchRelated(related.terms)}>Search related words</button>
-          </div>
-        </details>}
       </div>
 
     </section>

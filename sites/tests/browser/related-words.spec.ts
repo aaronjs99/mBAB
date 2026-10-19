@@ -31,7 +31,7 @@ async function installFixtures(page: Page, emptyExact = false) {
         related: { terms: ["wise", "wisely"], total: 7, results: relatedVerses(version) },
       } });
     }
-    const results = query === "wise wisely" ? relatedVerses(version) : [{
+    const results = query === "wise wisely" || query === "wise" ? relatedVerses(version).filter(verse => query !== "wise" || /\bwise\b/i.test(verse.text)) : [{
       ref: "Proverbs 3:1", book: "Proverbs", chapter: 3, verse: 1, text: "Mercy endures.", version,
     }];
     return route.fulfill({ json: {
@@ -46,7 +46,7 @@ async function installFixtures(page: Page, emptyExact = false) {
   } }));
 }
 
-test("Entire Bible is the default and related words follow exact results and pagination quietly", async ({ page }) => {
+test("Entire Bible is the default and related words are available above exact matches", async ({ page }) => {
   await installFixtures(page);
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Choose books: Entire Bible (66/66)", exact: true })).toContainText("Entire Bible");
@@ -54,28 +54,41 @@ test("Entire Bible is the default and related words follow exact results and pag
   await page.locator("#query").press("Enter");
   await expect(page.locator("#results-heading")).toHaveText("21 verses found");
   await expect(page.locator(".results-head .eyebrow")).toContainText("Entire Bible");
-  const related = page.locator(".related-words");
-  await expect(related).not.toHaveAttribute("open");
-  await expect(related.locator("summary")).toContainText("wise, wisely");
-  await expect(related.locator("summary")).toContainText("7 verses");
+  const related = page.getByRole("region", { name: "Related words", exact: true });
+  const preview = related.locator("details");
+  const wise = related.getByRole("button", { name: "Search related word: wise", exact: true });
+  await expect(related).toBeInViewport();
+  await expect(wise).toBeInViewport();
+  await expect(related.getByRole("button", { name: "Search related word: wisely", exact: true })).toBeVisible();
+  await expect(preview).not.toHaveAttribute("open");
+  await expect(preview.locator("summary")).toContainText("Preview verses");
+  await expect(preview.locator("summary")).toContainText("7 verses");
+  await expect(preview.locator(".result-card").first()).not.toBeVisible();
   await expect(page.locator(".reading-list > .result-card")).toHaveCount(20);
-  expect(await related.evaluate(element => Boolean(document.querySelector(".pagination")!.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
-  await related.locator("summary").focus();
-  await page.keyboard.press("Enter");
-  await expect(related.locator(".result-card")).toHaveCount(3);
-  await expect(related.locator("mark")).toHaveText(["wise", "wisely", "wise"]);
-  await page.locator(".book-overview > summary").click();
-  await expect(page.getByText("Choose a book to narrow results.", { exact: true })).toBeVisible();
+  expect(await related.evaluate(element => Boolean(element.compareDocumentPosition(document.querySelector(".book-overview")!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+  expect(await related.evaluate(element => Boolean(element.compareDocumentPosition(document.querySelector(".reading-list")!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
   const output = process.env.MBAB_SCREENSHOTS;
   if (output) {
     await mkdir(output, { recursive: true });
-    await related.scrollIntoViewIfNeeded();
     await page.screenshot({ path: join(output, "related-words-desktop.png") });
   }
   await page.setViewportSize({ width: 390, height: 844 });
-  await related.scrollIntoViewIfNeeded();
+  await expect(related).toBeInViewport();
+  await expect(wise).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   if (output) await page.screenshot({ path: join(output, "related-words-mobile.png") });
+  await wise.focus();
+  await expect(wise).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(related.getByRole("button", { name: "Search related word: wisely", exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(preview.locator("summary")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(preview).toHaveAttribute("open", "");
+  await expect(preview.locator(".result-card").first()).toBeVisible();
+  await expect(preview.locator("mark")).toHaveText(["wise", "wisely", "wise"]);
+  await page.locator(".book-overview > summary").click();
+  await expect(page.getByText("Choose a book to narrow results.", { exact: true })).toBeVisible();
 });
 
 test("related Read, Copy, Save, and search use the submitted edition and book scope", async ({ page, context }) => {
@@ -85,8 +98,8 @@ test("related Read, Copy, Save, and search use the submitted edition and book sc
   await expect(page.locator("#results-heading")).toHaveText("21 verses found");
   await page.locator("#query").fill("peace");
   await page.locator("#version").selectOption("WEB");
-  const related = page.locator(".related-words");
-  await related.locator("summary").click();
+  const related = page.getByRole("region", { name: "Related words", exact: true });
+  await related.locator("details > summary").click();
   const first = related.locator(".result-card").first();
   const read = first.getByRole("button", { name: "Read in context", exact: true });
   await read.click();
@@ -110,10 +123,44 @@ test("related Read, Copy, Save, and search use the submitted edition and book sc
   await expect(related).toHaveCount(0);
 });
 
+test("a direct related term on page two preserves completed settings and starts at page one", async ({ page }) => {
+  await installFixtures(page);
+  await page.goto("/?q=wisdom&version=KJV&books=19,42&page=2");
+  await expect(page.locator(".pagination")).toContainText("Page 2 of 2");
+  const related = page.getByRole("region", { name: "Related words", exact: true });
+  const wise = related.getByRole("button", { name: "Search related word: wise", exact: true });
+  await expect(related).toBeInViewport();
+  await expect(wise).toBeInViewport();
+  await page.locator("#query").fill("peace");
+  await page.locator("#version").selectOption("WEB");
+  await page.getByRole("button", { name: "Choose books: 2 books (2/66)", exact: true }).click();
+  await page.getByRole("button", { name: "John", exact: true }).click();
+  await page.getByRole("button", { name: "Job", exact: true }).click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(wise).toBeInViewport();
+  await expect(related.locator("details")).not.toHaveAttribute("open");
+  await wise.focus();
+  await expect(wise).toBeFocused();
+  const requested = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === "/api/search" && url.searchParams.get("q") === "wise";
+  });
+  await wise.press("Enter");
+  const params = new URL((await requested).url()).searchParams;
+  expect(Object.fromEntries(params)).toMatchObject({ q: "wise", mode: "any", version: "KJV", books: "19,42", page: "1", case: "false" });
+  await expect(page.locator("#query")).toHaveValue("wise");
+  await expect(page.locator("#version")).toHaveValue("KJV");
+  await expect(page.getByRole("button", { name: "Choose books: 2 books (2/66)", exact: true })).toBeVisible();
+  await expect(page.locator(".expression code")).toHaveText("wise");
+  await expect(page.locator(".reading-list > .result-card")).toHaveCount(2);
+  await expect(related).toHaveCount(0);
+});
+
 test("a new submitted scope or edition closes the related preview", async ({ page }) => {
   await installFixtures(page);
   await page.goto("/?q=wisdom&version=KJV&books=19,42");
-  const related = page.locator(".related-words");
+  const related = page.locator(".related-preview");
   await related.locator("summary").click();
   await page.getByRole("button", { name: "Choose books: 2 books (2/66)", exact: true }).click();
   await page.getByRole("button", { name: "John", exact: true }).click();
@@ -139,7 +186,7 @@ test("related-only matches and older cached responses have honest empty states",
   await page.goto("/?q=wisdom&version=KJV");
   await expect(page.locator("#results-heading")).toHaveText("0 verses found");
   await expect(page.locator(".empty-state")).toHaveText("No exact matches.");
-  await page.locator(".related-words > summary").click();
+  await page.locator(".related-preview > summary").click();
   await expect(page.locator(".related-words .result-card")).toHaveCount(3);
   await page.locator("#query").fill("mercy");
   await page.getByRole("button", { name: "Search", exact: true }).click();
@@ -175,10 +222,13 @@ test("real corpus offers distinct related wisdom verses", async ({ page, request
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/?q=wisdom&version=KJV&books=19");
   await expect(page.locator("#results-heading")).toHaveText(`${payload.total.toLocaleString()} verses found`);
-  const related = page.locator(".related-words");
-  await expect(related).not.toHaveAttribute("open");
-  await expect(related.locator("summary")).toContainText(`${payload.related.total.toLocaleString()} verses`);
-  await related.locator("summary").click();
+  const related = page.getByRole("region", { name: "Related words", exact: true });
+  await expect(related).toBeInViewport();
+  await expect(related.getByRole("button", { name: "Search related word: wise", exact: true })).toBeInViewport();
+  const preview = related.locator("details");
+  await expect(preview).not.toHaveAttribute("open");
+  await expect(preview.locator("summary")).toContainText(`${payload.related.total.toLocaleString()} verses`);
+  await preview.locator("summary").click();
   await expect(related.locator(".result-card")).toHaveCount(3);
   await expect(related.locator("blockquote")).toHaveText(payload.related.results.map((verse: { text: string }) => verse.text));
   expect(await related.locator("mark").count()).toBeGreaterThanOrEqual(3);
@@ -189,4 +239,36 @@ test("real corpus offers distinct related wisdom verses", async ({ page, request
     await related.scrollIntoViewIfNeeded();
     await page.screenshot({ path: join(output, "related-words-real-mobile.png") });
   }
+});
+
+test("real Jesus search keeps page two and puts related searches within reach", async ({ page, request }) => {
+  const path = "/?q=jesus&mode=all&version=KJV&page=2";
+  const payload = await (await request.get("/api/search?q=jesus&version=KJV&page=2")).json();
+  expect(payload.page).toBe(2);
+  expect(payload.total).toBeGreaterThan(20);
+  expect(payload.related.terms).toEqual(["christ", "messiah", "messias"]);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(path);
+  await expect(page.locator("#results-heading")).toHaveText(`${payload.total.toLocaleString()} verses found`);
+  await expect(page.locator(".pagination")).toContainText("Page 2");
+  const related = page.getByRole("region", { name: "Related words", exact: true });
+  await expect(related).toBeInViewport();
+  await expect(page.locator(".reading-list .result-ref").first()).toContainText(payload.results[0].ref);
+  const output = process.env.MBAB_SCREENSHOTS;
+  if (output) {
+    await mkdir(output, { recursive: true });
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: join(output, "mbab-jesus-desktop.png") });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await related.scrollIntoViewIfNeeded();
+  await expect(related.getByRole("button", { name: "Search related word: christ", exact: true })).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  if (output) await page.screenshot({ path: join(output, "mbab-jesus-mobile.png") });
+  await related.getByRole("button", { name: "Search related word: christ", exact: true }).click();
+  await expect(page.locator("#query")).toHaveValue("christ");
+  await expect(page).toHaveURL(/q=christ.*version=KJV.*page=1/);
+  await expect(page.locator(".results-head .eyebrow")).toHaveText("KJV · Entire Bible");
+  await expect(page.locator(".reading-list blockquote").first()).toContainText(/\bChrist\b/i);
 });

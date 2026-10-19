@@ -45,13 +45,17 @@ existing public endpoints and reference fallback sources are used.
 
 New searches start with the entire Bible selected. The results show the submitted
 scope; expand Matches by book to narrow it without changing the query or edition.
-Plain, case-insensitive single-word searches can also offer a collapsed Related
-words preview after the exact results and pagination. Curated wisdom, mercy,
-prayer, and forgiveness word families use whole-word matches, exclude every exact
-verse, and preserve the selected books and edition. The preview contains at most
-three verses; Search related words starts an ordinary Any word search of those
-forms. Advanced expressions, references, multiword queries, and Match case retain
-their explicit meaning. This is a word-family lookup, not semantic or AI search.
+Plain, case-insensitive single-word searches can also offer Related words directly
+below the results heading. Each visible term starts a search with one click;
+Preview verses optionally opens three additional verses without changing the exact
+page. Wisdom, mercy, prayer, and forgiveness word families use whole-word matches;
+Jesus and Christ also have explicitly curated associated search terms. Suggestions
+are literal searches, not claims that terms are equivalent or interchangeable.
+Preview verses exclude every exact match and preserve the selected books and
+edition. Both individual terms and Search related words use the completed search
+settings and restart at page one. Advanced expressions, references, multiword
+queries, and Match case retain their explicit meaning. This uses no semantic or
+AI inference.
 
 Results retain the query, edition, book scope, case setting, and page that produced
 them. Editing the form leaves those results in place and shows a reminder to search

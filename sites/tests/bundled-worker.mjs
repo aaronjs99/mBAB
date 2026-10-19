@@ -14,6 +14,9 @@ const worker = createBuiltWorker({ assets: async request => {
     .map(item => [item.bookId, item.chapter, item.verse, item.raw]) : [];
   return Response.json({ schema: 1, version: match[1], rows: [...notes,
     [19, 1, 1, "Wisdom for the wise"], [19, 1, 2, "A wise son"],
+    ...Array.from({ length: 21 }, (_, index) => [40, 1, index + 1, index === 0 ? "Jesus Christ" : "Jesus spoke"]),
+    [40, 2, 1, "Christ is named"], [40, 2, 2, "Messiah is named"], [40, 2, 3, "Messias is named"],
+    [40, 2, 4, "Antichrist, Christendom, and messianic"],
     [42, 3, 16, "For God so loved the world"], [42, 3, 17, "God sent his Son"]] });
 } });
 after(() => worker.dispose());
@@ -27,6 +30,26 @@ test("the published Worker finds wisdom first and offers distinct wise verses in
   assert.ok(body.related.total > 0);
   assert.ok(body.related.results.every(item => item.book === "Proverbs" && item.version === "KJV"
     && /\b(wise|wiser|wisest|wisely)\b/i.test(item.text) && !/\bwisdom\b/i.test(item.text)));
+});
+
+test("the published Worker preserves Jesus page two and offers distinct literal Christ, Messiah, and Messias matches", async () => {
+  const response = await worker.dispatchFetch("https://mbab.test/api/search?q=Jesus&version=KJV&page=2");
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.total, realCorpus ? 942 : 21);
+  assert.equal(body.page, 2);
+  assert.equal(body.pageSize, 20);
+  assert.equal(body.totalPages, realCorpus ? 48 : 2);
+  assert.equal(body.selectedBookCount, 66);
+  assert.equal(body.expression, "Jesus");
+  assert.equal(body.results[0].ref, realCorpus ? "Matthew 8:7" : "Mark 1:21");
+  assert.ok(body.results.every(item => item.version === "KJV" && /\bjesus\b/i.test(item.text)));
+  assert.deepEqual(body.related.terms, ["christ", "messiah", "messias"]);
+  assert.equal(body.related.total, realCorpus ? 276 : 3);
+  assert.equal(body.related.results.length, 3);
+  assert.ok(body.related.results.every(item => item.version === "KJV"
+    && /\b(christ|messiah|messias)\b/i.test(item.text) && !/\bjesus\b/i.test(item.text)));
+  assert.equal(body.bookCounts.reduce((sum, book) => sum + book.count, 0), body.total);
 });
 
 test("the built site searches and reads its own text with external networking disabled", async () => {

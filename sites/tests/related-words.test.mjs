@@ -18,13 +18,75 @@ const rows = [
   [19, 2, 3, "The wisest of men"], [19, 2, 4, "Walk wisely"],
   [19, 2, 5, "Otherwise unwise"], [42, 1, 1, "The wise hear"],
 ];
-function source() {
+function source(corpusRows = rows) {
   return createAssetCorpusSource({ fetch: async request => Response.json({ schema: 1,
-    version: new URL(request.url).pathname.match(/([A-Z]+)\.json$/)[1], rows }) });
+    version: new URL(request.url).pathname.match(/([A-Z]+)\.json$/)[1], rows: corpusRows }) });
 }
 function request(settings = {}) {
   return new Request(`https://mbab.test/api/search?${new URLSearchParams({ q: "wisdom", books: "19", ...settings })}`);
 }
+
+const nameRows = [
+  ...Array.from({ length: 21 }, (_, index) => [39, 1, index + 1,
+    index === 0 || index === 20 ? "Jesus Christ" : "Jesus spoke"]),
+  [39, 2, 1, "Christ is named"], [39, 2, 2, "Messiah is named"], [39, 2, 3, "Messias is named"],
+  [39, 2, 4, "Antichrist, Christendom, and messianic"],
+  [42, 1, 1, "Christ was mentioned"], [42, 1, 2, "Jesus was mentioned"],
+];
+
+test("Jesus page two keeps exact whole-Bible results and excludes every exact verse from literal suggestions", async () => {
+  const response = await handleSearchRequest(new Request("https://mbab.test/api/search?q=Jesus&page=2"), source(nameRows));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.total, 22);
+  assert.equal(body.page, 2);
+  assert.equal(body.pageSize, 20);
+  assert.equal(body.totalPages, 2);
+  assert.equal(body.selectedBookCount, 66);
+  assert.equal(body.expression, "Jesus");
+  assert.deepEqual(body.results.map(item => item.ref), ["Matthew 1:21", "John 1:2"]);
+  assert.deepEqual(body.bookCounts, [{ bookId: 39, count: 21 }, { bookId: 42, count: 1 }]);
+  assert.deepEqual(body.related, { terms: ["christ", "messiah", "messias"], total: 4, results: [
+    { ref: "Matthew 2:1", book: "Matthew", chapter: 2, verse: 1, text: "Christ is named", version: "KJV" },
+    { ref: "Matthew 2:2", book: "Matthew", chapter: 2, verse: 2, text: "Messiah is named", version: "KJV" },
+    { ref: "Matthew 2:3", book: "Matthew", chapter: 2, verse: 3, text: "Messias is named", version: "KJV" },
+  ] });
+  assert.equal(isSearchResponse(body), true);
+});
+
+test("Jesus suggestions preserve the submitted edition and book scope", async () => {
+  for (const version of ["KJV", "WEB"]) {
+    const jesus = await (await handleSearchRequest(request({ q: "jEsUs", books: "39", version, page: "2" }), source(nameRows))).json();
+    assert.equal(jesus.total, 21);
+    assert.ok(jesus.related, "Jesus should offer the explicitly selected related terms");
+    assert.equal(jesus.related.total, 3);
+    assert.deepEqual(jesus.related.terms, ["christ", "messiah", "messias"]);
+    assert.ok(jesus.related.results.every(item => item.book === "Matthew" && item.version === version));
+    assert.equal(isSearchResponse(jesus), true);
+  }
+});
+
+test("Christ offers Jesus and the literal title searches within the submitted edition and scope", async () => {
+  for (const version of ["KJV", "WEB"]) {
+    const christ = await (await handleSearchRequest(request({ q: "Christ", mode: "any", books: "42", version }), source(nameRows))).json();
+    assert.equal(christ.total, 1);
+    assert.ok(christ.related, "Christ should offer the explicitly selected related terms");
+    assert.equal(christ.related.total, 1);
+    assert.deepEqual(christ.related.terms, ["jesus", "messiah", "messias"]);
+    assert.deepEqual(christ.related.results, [
+      { ref: "John 1:2", book: "John", chapter: 1, verse: 2, text: "Jesus was mentioned", version },
+    ]);
+    assert.equal(isSearchResponse(christ), true);
+  }
+});
+
+test("name suggestions do not expand explicit searches or imply reciprocal Messiah suggestions", async () => {
+  for (const settings of [{ q: "Jesus", mode: "advanced" }, { q: "Jesus", case: "true" },
+    { q: "Jesus Christ" }, { q: "Jesus,Christ", mode: "advanced" }, { q: "Messiah" }, { q: "Messias" }, { q: "faith" }]) {
+    const body = await (await handleSearchRequest(request({ books: "39", ...settings }), source(nameRows))).json();
+    assert.equal(body.related, undefined, JSON.stringify(settings));
+  }
+});
 
 test("wisdom keeps exact counts and pagination while related forms exclude every exact match", async () => {
   for (const page of [1, 2]) {
