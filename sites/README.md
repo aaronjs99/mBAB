@@ -43,6 +43,16 @@ existing public endpoints and reference fallback sources are used.
 
 ## Search sessions
 
+New searches start with the entire Bible selected. The results show the submitted
+scope; expand Matches by book to narrow it without changing the query or edition.
+Plain, case-insensitive single-word searches can also offer a collapsed Related
+words preview after the exact results and pagination. Curated wisdom, mercy,
+prayer, and forgiveness word families use whole-word matches, exclude every exact
+verse, and preserve the selected books and edition. The preview contains at most
+three verses; Search related words starts an ordinary Any word search of those
+forms. Advanced expressions, references, multiword queries, and Match case retain
+their explicit meaning. This is a word-family lookup, not semantic or AI search.
+
 Results retain the query, edition, book scope, case setting, and page that produced
 them. Editing the form leaves those results in place and shows a reminder to search
 again. Pagination and sharing use the submitted settings. Shared links run on load,

@@ -136,6 +136,16 @@ mark { background: var(--gold); color: inherit; border-radius: 2px; padding: 0 2
 .pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 26px; font-size: 12px; color: var(--muted); }
 .pagination button { min-height: 40px; font-size: 12px; }
 .pagination strong { font-weight: 500; color: var(--ink); }
+.related-words { margin-top: 30px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.related-words-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-height: 48px; padding: 10px 0; color: var(--muted); font-size: 12px; }
+.related-words-summary::after { content: "+"; margin-left: auto; font-size: 17px; font-weight: 300; }
+.related-words[open] .related-words-summary::after { content: "−"; }
+.related-words-terms { color: var(--ink); font: 11px var(--font-code); overflow-wrap: anywhere; }
+.related-words-count { white-space: nowrap; font-size: 11px; }
+.related-words-content { padding-bottom: 18px; }
+.related-verse-list .result-card:first-child { padding-top: 12px; }
+.related-search { min-height: 44px; margin-top: 16px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 5px; font-size: 12px; }
+.related-search:hover:not(:disabled) { border-color: var(--accent); }
 .book-overview { border-bottom: 1px solid var(--line); }
 .book-overview-summary { display: flex; align-items: center; gap: 9px; min-height: 48px; color: var(--muted); font-size: 12px; }
 .book-overview-summary::after { content: "+"; margin-left: auto; font-size: 17px; font-weight: 300; }

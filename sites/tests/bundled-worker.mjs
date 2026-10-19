@@ -12,9 +12,22 @@ const worker = createBuiltWorker({ assets: async request => {
   if (realCorpus) return new Response(readFileSync(new URL(`${match[1]}.json`, corpusRoot)), { headers: { "Content-Type": "application/json" } });
   const notes = match[1] === "WEB" ? textFixtures.filter(item => item.version === "WEB" && item.bookId === 39)
     .map(item => [item.bookId, item.chapter, item.verse, item.raw]) : [];
-  return Response.json({ schema: 1, version: match[1], rows: [...notes, [42, 3, 16, "For God so loved the world"], [42, 3, 17, "God sent his Son"]] });
+  return Response.json({ schema: 1, version: match[1], rows: [...notes,
+    [19, 1, 1, "Wisdom for the wise"], [19, 1, 2, "A wise son"],
+    [42, 3, 16, "For God so loved the world"], [42, 3, 17, "God sent his Son"]] });
 } });
 after(() => worker.dispose());
+
+test("the published Worker finds wisdom first and offers distinct wise verses in the same scope", async () => {
+  const response = await worker.dispatchFetch("https://mbab.test/api/search?q=wisdom&version=KJV&books=19");
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.ok(body.total > 0);
+  assert.ok(body.results.every(item => /\bwisdom\b/i.test(item.text)));
+  assert.ok(body.related.total > 0);
+  assert.ok(body.related.results.every(item => item.book === "Proverbs" && item.version === "KJV"
+    && /\b(wise|wiser|wisest|wisely)\b/i.test(item.text) && !/\bwisdom\b/i.test(item.text)));
+});
 
 test("the built site searches and reads its own text with external networking disabled", async () => {
   const response = await worker.dispatchFetch(`https://mbab.test/api/search?q=${realCorpus ? "love" : "loved"}&version=KJV`);

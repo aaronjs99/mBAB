@@ -203,7 +203,7 @@ export function SearchStudio() {
             loading={loading}
             onCopy={(value, success) => void copy(value, success)}
             onToggleSaved={toggleSaved}
-            onRead={result => reader.open({ result, query: completed.response.expression, caseSensitive: completed.settings.caseSensitive })}
+            onRead={(result, expression) => reader.open({ result, query: expression ?? completed.response.expression, caseSensitive: completed.settings.caseSensitive })}
             onShare={() => void copy(`${window.location.origin}${window.location.pathname}?${searchParamsFor(completed.settings)}`, "Share link copied.")}
             onPage={(page) => { setNotice(""); void runSearch({ ...completed.settings, page }); }}
             onNarrow={bookId => {
@@ -211,6 +211,13 @@ export function SearchStudio() {
               setDraft(narrowed);
               setNotice("");
               void runSearch(narrowed);
+            }}
+            relatedKey={searchParamsFor({ ...completed.settings, page: 1 }).toString()}
+            onSearchRelated={terms => {
+              const settings = { ...completed.settings, query: terms.join(" "), mode: "any" as const, page: 1 };
+              setDraft(settings);
+              setNotice("");
+              void runSearch(settings);
             }}
           />
         )}

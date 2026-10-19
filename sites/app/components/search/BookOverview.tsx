@@ -22,6 +22,7 @@ export function BookOverview({ counts, total, loading, canNarrow, onNarrow }: Pr
       </summary>
       <div className="book-overview-content" role="region" aria-label="Matches by book">
         <p className="book-overview-caption">{total.toLocaleString()} matched {total === 1 ? "verse" : "verses"}</p>
+        {canNarrow && <p className="book-overview-caption">Choose a book to narrow results.</p>}
         <div className="book-match-list" id="book-overview-list">
           {shown.map(item => {
             const book = BOOKS[item.bookId];

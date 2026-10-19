@@ -3,8 +3,10 @@ import { expressionFor, parseBookIds, parseReference, type BibleReference } from
 import { readLegacyResults } from "./legacy-response";
 import { countResultsByBook } from "./search-summary";
 import { fetchReferenceVerses } from "./reference-source";
+import { relatedWords } from "./related-words";
+import { normalizeVerseText } from "./verse-text";
 import type { ChapterVerse } from "./chapter-response";
-import type { SearchMode, SearchResult } from "./types";
+import type { SearchMode, SearchResponse, SearchResult } from "./types";
 
 export type CorpusSource = {
   search(expression: string, version: string, books: readonly number[], caseSensitive: boolean, signal: AbortSignal): Promise<SearchResult[]>;
@@ -71,6 +73,7 @@ export async function handleSearchRequest(request: Request, source?: CorpusSourc
   if (!(["all", "any", "advanced"] as string[]).includes(mode)) return json({ error: "Unknown search mode." }, 400);
   if (!VERSIONS.some((item) => item.id === version)) return json({ error: "That edition is not available here." }, 400);
   if (!selectedBooks) return json({ error: "Choose one or more valid books." }, 400);
+  const books = selectedBooks;
 
   const built = expressionFor(query, mode);
   if (built.error || !built.expression) return json({ error: built.error }, 400);
@@ -114,46 +117,45 @@ export async function handleSearchRequest(request: Request, source?: CorpusSourc
     }
   }
 
-  if (source) {
-    try {
-      const results = await source.search(built.expression, version, selectedBooks, caseSensitive, request.signal);
-      return json(paginatedResponse(results, page, pageSize, built.expression, selectedBooks.length), 200, true);
-    } catch {
-      request.signal.throwIfAborted();
-      return json({ error: `Search is unavailable for ${version}. Please try again.` }, 503);
-    }
-  }
-
-  const legacyUrl = new URL(LEGACY_SEARCH_URL);
-  legacyUrl.searchParams.set("search", built.expression);
-  legacyUrl.searchParams.set("keyword", built.expression);
-  legacyUrl.searchParams.set("version", version);
-  legacyUrl.searchParams.set("case", caseSensitive ? "True" : "False");
-  legacyUrl.searchParams.set("books", bookMask(selectedBooks));
-
-  try {
+  async function search(expression: string) {
+    if (source) return source.search(expression, version, books, caseSensitive, request.signal);
+    const legacyUrl = new URL(LEGACY_SEARCH_URL);
+    legacyUrl.searchParams.set("search", expression);
+    legacyUrl.searchParams.set("keyword", expression);
+    legacyUrl.searchParams.set("version", version);
+    legacyUrl.searchParams.set("case", caseSensitive ? "True" : "False");
+    legacyUrl.searchParams.set("books", bookMask(books));
     const response = await fetch(legacyUrl, {
       headers: { Accept: "application/json", "User-Agent": "mBAB-Sites/1.0" },
       signal: AbortSignal.any([request.signal, AbortSignal.timeout(12_000)]),
     });
     if (!response.ok) throw new Error(`Search source returned ${response.status}`);
+    return readLegacyResults(await response.json(), version, books);
+  }
 
-    const allResults = readLegacyResults(await response.json(), version, selectedBooks);
-    return json(
-      paginatedResponse(
-        allResults,
-        page,
-        pageSize,
-        built.expression,
-        selectedBooks.length,
-      ),
-      200,
-      true,
-    );
+  try {
+    const allResults = await search(built.expression);
+    const terms = relatedWords(query, mode, caseSensitive);
+    let related: SearchResponse["related"];
+    if (terms.length) {
+      try {
+        const exactRefs = new Set(allResults.map(result => result.ref));
+        const matchesRelated = new RegExp(`\\b(?:${terms.join("|")})\\b`, "i");
+        const relatedResults = (await search(terms.join(",")))
+          .map(result => ({ ...result, text: normalizeVerseText(result.text, version) }))
+          .filter(result => !exactRefs.has(result.ref) && matchesRelated.test(result.text));
+        if (relatedResults.length) related = { terms, total: relatedResults.length, results: relatedResults.slice(0, 3) };
+      } catch {
+        // A secondary lookup must never discard the reader's exact matches.
+        request.signal.throwIfAborted();
+      }
+    }
+    const response = paginatedResponse(allResults, page, pageSize, built.expression, books.length);
+    return json(related ? { ...response, related } : response, 200, true);
   } catch {
     request.signal.throwIfAborted();
     return json(
-      { error: "The verse index is taking longer than expected. Please try again in a moment." },
+      { error: source ? `Search is unavailable for ${version}. Please try again.` : "The verse index is taking longer than expected. Please try again in a moment." },
       503,
     );
   }

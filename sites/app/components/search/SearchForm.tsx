@@ -16,7 +16,7 @@ type Props = {
 export function SearchForm({ query, mode, version, selectedBooks, activeGroup, showBooks,
   caseSensitive, loading, ready, hasResults, examples, onQueryChange, onModeChange,
   onVersionChange, onCaseChange, onTogglePicker, onSelectGroup, onToggleBook, onSearch, onExample }: Props) {
-  const scope = selectedBooks.length === BOOKS.length ? "All books"
+  const scope = selectedBooks.length === BOOKS.length ? "Entire Bible"
     : selectedBooks.length === 1 ? BOOKS[selectedBooks[0]].name : `${selectedBooks.length} books`;
   return (
     <section className="search-card" aria-labelledby="search-heading">
@@ -45,7 +45,7 @@ export function SearchForm({ query, mode, version, selectedBooks, activeGroup, s
             {SEARCH_MODES.map(item => <button key={item.id} type="button" className={mode === item.id ? "active" : ""} onClick={() => onModeChange(item.id)} aria-pressed={mode === item.id}>{item.label}</button>)}
           </fieldset>
           <div className="search-filters">
-            <button className="filter-toggle" type="button" disabled={!ready} onClick={onTogglePicker} aria-expanded={showBooks} aria-controls="book-picker" aria-label={`Choose books ${selectedBooks.length}/${BOOKS.length}`}>
+            <button className="filter-toggle" type="button" disabled={!ready} onClick={onTogglePicker} aria-expanded={showBooks} aria-controls="book-picker" aria-label={`Choose books: ${scope} (${selectedBooks.length}/${BOOKS.length})`}>
               {scope}<span className="sr-only"> {selectedBooks.length}/{BOOKS.length}</span><span className="chevron" aria-hidden="true" />
             </button>
             <details className="search-options">

@@ -52,7 +52,7 @@ test("pagination keeps the submitted search even when the form has unsent edits"
   expect(params.get("page")).toBe("2");
   await expect(page.locator(".pagination")).toContainText("Page 2 of");
   await expect(page.locator("#query")).toHaveValue("peace");
-  await expect(page.locator(".results-head .eyebrow")).toHaveText("KJV · 66 books");
+  await expect(page.locator(".results-head .eyebrow")).toHaveText("KJV · Entire Bible");
 });
 
 test("successful searches support browser back and forward", async ({ page }) => {
