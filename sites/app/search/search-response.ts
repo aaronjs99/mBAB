@@ -1,5 +1,6 @@
 import { BOOKS, isVersion } from "./catalog";
 import { countResultsByBook } from "./search-summary";
+import { expressionFor, parseReference } from "./query";
 import type { SearchResponse, SearchResult } from "./types";
 
 function isPositiveInteger(value: unknown): value is number {
@@ -42,7 +43,24 @@ export function isSearchResponse(value: unknown): value is SearchResponse {
     && Array.isArray(item.results) && item.results.length <= item.pageSize
     && item.results.length <= item.total && item.results.every(isSearchResult)
     && validBookCounts(item.bookCounts, item.total, item.selectedBookCount, item.results)
-    && validRelated(item.related, item.results, item.expression);
+    && validRelated(item.related, item.results, item.expression)
+    && validSuggestions(item.relatedSuggestions);
+}
+
+function validSuggestions(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!Array.isArray(value) || value.length > 6) return false;
+  const seen = new Set<string>();
+  return value.every(item => {
+    if (!item || typeof item !== "object" || typeof item.label !== "string" || !item.label.trim()
+      || item.label.length > 140 || typeof item.query !== "string" || item.query.length < 2 || item.query.length > 120
+      || !["all", "any", "advanced"].includes(item.mode) || parseReference(item.query)
+      || !expressionFor(item.query, item.mode).expression) return false;
+    const key = `${item.mode}:${item.query}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function validRelated(value: unknown, exactResults: SearchResult[], expression: string): boolean {

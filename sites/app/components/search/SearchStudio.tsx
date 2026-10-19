@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { BOOK_GROUPS, VERSIONS } from "@/app/search/catalog";
@@ -9,7 +9,7 @@ import { applyTheme, readInitialBrowserState, storeSavedVerses } from "@/app/sea
 import { searchParamsFor } from "@/app/search/search-location";
 import { useSearchSession } from "@/app/search/use-search-session";
 import { useChapterReader } from "@/app/search/use-chapter-reader";
-import type { SearchExample, SearchResult } from "@/app/search/types";
+import type { SearchExample, SearchResponse, SearchResult } from "@/app/search/types";
 import { SearchHelp } from "./SearchHelp";
 import { ChapterReader } from "./ChapterReader";
 import { SavedTray } from "./SavedTray";
@@ -37,6 +37,7 @@ export function SearchStudio() {
   const [savedOpen, setSavedOpen] = useState(false);
   const [dark, setDark] = useState(false);
   const [notice, setNotice] = useState("");
+  const relatedFocus = useRef<{ trigger: Element | null; settings: string; response: SearchResponse } | null>(null);
 
   const activeGroup = useMemo(
     () => BOOK_GROUPS.find((group) => sameIds(selectedBooks, group.ids))?.id ?? "custom",
@@ -52,6 +53,17 @@ export function SearchStudio() {
       setDark(initial.dark);
     });
   }, []);
+
+  useEffect(() => {
+    const target = relatedFocus.current;
+    if (!target || pending) return;
+    relatedFocus.current = null;
+    if (failure || !completed || completed.response === target.response
+      || searchParamsFor({ ...completed.settings, page: 1 }).toString() !== target.settings
+      || !target.trigger || target.trigger.isConnected) return;
+    if (document.activeElement && document.activeElement !== document.body && document.activeElement !== target.trigger) return;
+    document.getElementById("results-heading")?.focus({ preventScroll: true });
+  }, [completed, pending, failure]);
 
   useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {
@@ -87,6 +99,15 @@ export function SearchStudio() {
   function submit(event: FormEvent) {
     event.preventDefault();
     void performSearch();
+  }
+
+  function performRelatedSuggestion(suggestion: SearchExample) {
+    if (!completed) return;
+    const settings = { ...completed.settings, query: suggestion.query, mode: suggestion.mode, page: 1 };
+    relatedFocus.current = { trigger: document.activeElement, settings: searchParamsFor(settings).toString(), response: completed.response };
+    setDraft(settings);
+    setNotice("");
+    void runSearch(settings);
   }
 
   function toggleBook(id: number) {
@@ -213,6 +234,7 @@ export function SearchStudio() {
               void runSearch(narrowed);
             }}
             relatedKey={searchParamsFor({ ...completed.settings, page: 1 }).toString()}
+            onRelatedSuggestion={performRelatedSuggestion}
             onSearchRelated={terms => {
               const settings = { ...completed.settings, query: terms.join(" "), mode: "any" as const, page: 1 };
               setDraft(settings);
@@ -226,7 +248,18 @@ export function SearchStudio() {
 
       <footer>
         <span>Aaron John Sabu</span>
-        <div className="footer-links"><a href="https://github.com/aaronjs99/mBAB">Source</a><details className="edition-credits"><summary>Text credits</summary><div><p>UKJV: I love Jesus (UKJV).</p>{VERSIONS.map(item => <a key={item.id} href={item.infoUrl} target="_blank" rel="noreferrer">{item.short} · {item.label}</a>)}</div></details></div>
+        <div className="footer-links">
+          <a href="https://github.com/aaronjs99/mBAB">Source</a>
+          <details className="edition-credits">
+            <summary>Text credits</summary>
+            <div>
+              <p>UKJV: I love Jesus (UKJV).</p>
+              {VERSIONS.map(item => <a key={item.id} href={item.infoUrl} target="_blank" rel="noreferrer">{item.short} · {item.label}</a>)}
+              <a href="https://wordnet.princeton.edu/" target="_blank" rel="noreferrer">Related words · WordNet 3.0</a>
+              <a href="/WORDNET-LICENSE.txt">WordNet license</a>
+            </div>
+          </details>
+        </div>
       </footer>
     </div>
   );

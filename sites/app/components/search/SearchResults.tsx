@@ -1,6 +1,6 @@
 import { BOOKS, SEARCH_MODES } from "@/app/search/catalog";
 import { parseReference } from "@/app/search/query";
-import type { BibleVersion, SearchMode, SearchResponse, SearchResult } from "@/app/search/types";
+import type { BibleVersion, SearchExample, SearchMode, SearchResponse, SearchResult } from "@/app/search/types";
 import { BookOverview } from "./BookOverview";
 import { VerseCard } from "./VerseCard";
 
@@ -19,11 +19,12 @@ type Props = {
   onRead: (result: SearchResult, expression?: string) => void;
   onPage: (page: number) => void;
   onNarrow: (bookId: number) => void;
+  onRelatedSuggestion: (suggestion: SearchExample) => void;
   onSearchRelated: (terms: string[]) => void;
   relatedKey: string;
 };
 
-export function SearchResults({ response, query, mode, caseSensitive, draftChanged, edition, saved, loading, onCopy, onShare, onToggleSaved, onRead, onPage, onNarrow, onSearchRelated, relatedKey }: Props) {
+export function SearchResults({ response, query, mode, caseSensitive, draftChanged, edition, saved, loading, onCopy, onShare, onToggleSaved, onRead, onPage, onNarrow, onRelatedSuggestion, onSearchRelated, relatedKey }: Props) {
   const first = (response.page - 1) * response.pageSize + (response.total ? 1 : 0);
   const last = Math.min(response.page * response.pageSize, response.total);
   const resultLabel = response.total === 1 ? "verse" : "verses";
@@ -31,6 +32,10 @@ export function SearchResults({ response, query, mode, caseSensitive, draftChang
   const logic = reference ? "Reference" : SEARCH_MODES.find(item => item.id === mode)?.label;
   const related = response.related;
   const relatedExpression = related?.terms.join(",") ?? "";
+  const suggestions: SearchExample[] = response.relatedSuggestions ?? (
+    related && /^[a-z]+$/i.test(response.expression)
+      ? related.terms.map(term => ({ label: term, query: term, mode: "any" as const })) : []
+  );
   return (
     <section className="results-layout results-reading" id="search-results" aria-labelledby="results-heading" aria-busy={loading}>
       <div className="results-main">
@@ -38,7 +43,7 @@ export function SearchResults({ response, query, mode, caseSensitive, draftChang
         <div className="results-head">
           <div className="results-summary">
             <p className="eyebrow" title={edition.label}>{edition.short} · {response.selectedBookCount === BOOKS.length ? "Entire Bible" : `${response.selectedBookCount} ${response.selectedBookCount === 1 ? "book" : "books"}`}</p>
-            <h2 id="results-heading">{response.total.toLocaleString()} {resultLabel} found</h2>
+            <h2 id="results-heading" tabIndex={-1}>{response.total.toLocaleString()} {resultLabel} found</h2>
             <p className="results-query expression">
               <code className="submitted-query">{response.expression}</code>
               <span className="results-logic">{logic}</span>
@@ -51,15 +56,15 @@ export function SearchResults({ response, query, mode, caseSensitive, draftChang
           </div>
         </div>
 
-        {related && related.terms.length > 0 && <section className="related-words" aria-labelledby="related-words-heading">
+        {(suggestions.length > 0 || related) && <section className="related-words" aria-labelledby="related-words-heading">
           <h3 className="related-words-heading" id="related-words-heading">Related words</h3>
-          <div className="related-terms">
-            {related.terms.map(term => <button
-              className="related-term" key={term} type="button" disabled={loading}
-              aria-label={`Search related word: ${term}`} onClick={() => onSearchRelated([term])}
-            >{term}</button>)}
-          </div>
-          <details className="related-preview" key={relatedKey}>
+          {suggestions.length > 0 && <div className="related-terms">
+            {suggestions.map(suggestion => <button
+              className="related-term" key={`${suggestion.mode}:${suggestion.query}`} type="button" disabled={loading}
+              aria-label={`Search related query: ${suggestion.query}${suggestion.label === suggestion.query ? "" : ` (${suggestion.label})`}`} onClick={() => onRelatedSuggestion(suggestion)}
+            >{suggestion.label}</button>)}
+          </div>}
+          {related && <details className="related-preview" key={relatedKey}>
             <summary className="related-preview-summary">
               <span>Preview verses</span>
               <span className="related-words-count">{related.total.toLocaleString()} {related.total === 1 ? "verse" : "verses"}</span>
@@ -74,7 +79,7 @@ export function SearchResults({ response, query, mode, caseSensitive, draftChang
               </div>
               <button className="related-search" type="button" disabled={loading} onClick={() => onSearchRelated(related.terms)}>Search related words</button>
             </div>
-          </details>
+          </details>}
         </section>}
 
         {!reference && !!response.bookCounts?.length && <BookOverview
@@ -90,7 +95,7 @@ export function SearchResults({ response, query, mode, caseSensitive, draftChang
               onRead={() => onRead(result)} onCopy={onCopy} onToggleSaved={onToggleSaved}
             />)}
           </div>
-        ) : <div className="empty-state"><p>{reference ? "No verses in this reference and book selection." : related ? "No exact matches." : "No matches. Try different words or books."}</p></div>}
+        ) : <div className="empty-state"><p>{reference ? "No verses in this reference and book selection." : related || suggestions.length > 0 ? "No exact matches." : "No matches. Try different words or books."}</p></div>}
 
         {response.totalPages > 1 && (
           <nav className="pagination" aria-label="Search result pages">

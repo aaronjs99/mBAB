@@ -51,6 +51,7 @@ export type SearchResponse = {
   source: string;
   bookCounts?: BookMatchCount[];
   related?: { terms: string[]; total: number; results: SearchResult[] };
+  relatedSuggestions?: SearchExample[];
 };
 
 export type BookMatchCount = { bookId: number; count: number };

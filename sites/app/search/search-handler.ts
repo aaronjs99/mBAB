@@ -3,12 +3,14 @@ import { expressionFor, parseBookIds, parseReference, type BibleReference } from
 import { readLegacyResults } from "./legacy-response";
 import { countResultsByBook } from "./search-summary";
 import { fetchReferenceVerses } from "./reference-source";
-import { relatedWords } from "./related-words";
+import { buildRelatedSuggestions } from "./related-words";
+import { compileExpression } from "./bundled-corpus";
 import { normalizeVerseText } from "./verse-text";
 import type { ChapterVerse } from "./chapter-response";
 import type { SearchMode, SearchResponse, SearchResult } from "./types";
 
 export type CorpusSource = {
+  vocabulary?(version: string, books: readonly number[], signal: AbortSignal): Promise<ReadonlySet<string>>;
   search(expression: string, version: string, books: readonly number[], caseSensitive: boolean, signal: AbortSignal): Promise<SearchResult[]>;
   chapter(reference: BibleReference, version: string, signal: AbortSignal): Promise<ChapterVerse[]>;
 };
@@ -135,23 +137,33 @@ export async function handleSearchRequest(request: Request, source?: CorpusSourc
 
   try {
     const allResults = await search(built.expression);
-    const terms = relatedWords(query, mode, caseSensitive);
     let related: SearchResponse["related"];
-    if (terms.length) {
-      try {
+    let relatedSuggestions: SearchResponse["relatedSuggestions"];
+    try {
+      if (buildRelatedSuggestions(query, mode, caseSensitive).length) {
+        const vocabulary = await source?.vocabulary?.(version, books, request.signal);
+        const candidates = buildRelatedSuggestions(query, mode, caseSensitive, vocabulary);
+        const expressions = candidates.map(candidate => expressionFor(candidate.query, candidate.mode).expression!);
+        const matchers = expressions.map(expression => compileExpression(expression, caseSensitive));
         const exactRefs = new Set(allResults.map(result => result.ref));
-        const matchesRelated = new RegExp(`\\b(?:${terms.join("|")})\\b`, "i");
-        const relatedResults = (await search(terms.join(",")))
-          .map(result => ({ ...result, text: normalizeVerseText(result.text, version) }))
-          .filter(result => !exactRefs.has(result.ref) && matchesRelated.test(result.text));
-        if (relatedResults.length) related = { terms, total: relatedResults.length, results: relatedResults.slice(0, 3) };
-      } catch {
-        // A secondary lookup must never discard the reader's exact matches.
-        request.signal.throwIfAborted();
+        const matches = expressions.length ? (await search(expressions.map(expression => `(${expression})`).join(",")))
+          .map(result => ({ ...result, text: normalizeVerseText(result.text, version) })) : [];
+        const available = candidates.map((candidate, index) => ({ candidate, matches: matchers[index] }))
+          .filter(item => matches.some(result => item.matches(result.text))).slice(0, 6);
+        relatedSuggestions = available.map(item => item.candidate);
+        if (/^[a-z]+$/i.test(query) && mode !== "advanced" && !caseSensitive) {
+          const terms = available.map(item => item.candidate.query.toLowerCase());
+          const additional = matches.filter(result => !exactRefs.has(result.ref)
+            && available.some(item => item.matches(result.text)));
+          if (additional.length) related = { terms, total: additional.length, results: additional.slice(0, 3) };
+        }
       }
+    } catch {
+      // A secondary lookup must never discard the reader's exact matches.
+      request.signal.throwIfAborted();
     }
     const response = paginatedResponse(allResults, page, pageSize, built.expression, books.length);
-    return json(related ? { ...response, related } : response, 200, true);
+    return json({ ...response, ...(related ? { related } : {}), ...(relatedSuggestions ? { relatedSuggestions } : {}) }, 200, true);
   } catch {
     request.signal.throwIfAborted();
     return json(

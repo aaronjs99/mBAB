@@ -1,0 +1,4 @@
+# Preserve reproducible generated data and the verbatim upstream license.
+app/search/data/wordnet-related.json text eol=lf
+app/search/data/README.md text eol=lf
+public/WORDNET-LICENSE.txt -text -whitespace

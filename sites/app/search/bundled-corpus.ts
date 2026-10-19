@@ -42,7 +42,7 @@ export function parseBundledCorpus(payload: unknown, expectedVersion: string): B
 
 type MatchesText = (text: string) => boolean;
 
-function compileExpression(expression: string, caseSensitive: boolean): MatchesText {
+export function compileExpression(expression: string, caseSensitive: boolean): MatchesText {
   if (!/^[A-Za-z0-9_(),+\s]+$/.test(expression)) throw new Error("Invalid compiled Boolean expression.");
   const tokens = expression.match(/[A-Za-z0-9_]+|[(),+]/g) ?? [];
   let cursor = 0;

@@ -45,17 +45,29 @@ existing public endpoints and reference fallback sources are used.
 
 New searches start with the entire Bible selected. The results show the submitted
 scope; expand Matches by book to narrow it without changing the query or edition.
-Plain, case-insensitive single-word searches can also offer Related words directly
-below the results heading. Each visible term starts a search with one click;
-Preview verses optionally opens three additional verses without changing the exact
-page. Wisdom, mercy, prayer, and forgiveness word families use whole-word matches;
-Jesus and Christ also have explicitly curated associated search terms. Suggestions
-are literal searches, not claims that terms are equivalent or interchangeable.
-Preview verses exclude every exact match and preserve the selected books and
-edition. Both individual terms and Search related words use the completed search
-settings and restart at page one. Advanced expressions, references, multiword
-queries, and Match case retain their explicit meaning. This uses no semantic or
-AI inference.
+Related words now uses an offline WordNet-derived dictionary and attested word
+forms rather than a hand-picked query list. Semantic alternatives use the first
+two dictionary senses per part of speech and direct lexical relations. Productive
+suffix changes also require dictionary support; spelling alone cannot connect
+`random` to `ran` or `witness` to `wit`.
+Candidates must occur in the selected edition/books, and their complete suggested
+query must return real verses. At most six suggestions are shown after one batched
+secondary search. No runtime dictionary service or model key is needed. Dataset,
+provenance, pinned source checksum and regeneration instructions are in
+[`app/search/data/README.md`](app/search/data/README.md); the full WordNet license
+ships with both the data and `public/WORDNET-LICENSE.txt`.
+
+Suggestions support All words, Any word, grouped Advanced expressions and Match
+case. One operand changes at a time; other words, operators, edition, books and
+case settings remain intact. A chip's label can show `wisdom → wise`, while its
+query remains `wise mercy`. Buttons always use completed search settings, restart
+at page one and restore keyboard focus when their trigger disappears. References
+remain exact; stopwords are never expanded, and unknown words can have no useful
+suggestion. Dictionary senses are optional related searches, not assertions of
+equivalence or interpretation. Simple case-insensitive word searches can also
+offer three distinct preview verses; previews exclude all exact matches. Older
+responses without structured suggestions still show their original single-word
+chips. A failed suggestion lookup preserves the exact results.
 
 Results retain the query, edition, book scope, case setting, and page that produced
 them. Editing the form leaves those results in place and shows a reminder to search
