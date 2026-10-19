@@ -3,6 +3,14 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { SearchExample } from "../../app/search/types";
 
+async function toggleBooks(page: Page, names: string[]) {
+  const picker = page.getByRole("complementary", { name: "Book selection", exact: true });
+  if (!await picker.isVisible()) await page.getByRole("button", { name: /Choose books:/ }).click();
+  for (const name of names) await picker.getByRole("button", { name, exact: true }).click();
+  const done = picker.getByRole("button", { name: "Done", exact: true });
+  if (await done.isVisible()) await done.click();
+}
+
 function relatedVerses(version: string) {
   return [
     { ref: "Proverbs 1:5", book: "Proverbs", chapter: 1, verse: 5, text: "A wise man will hear.", version },
@@ -95,13 +103,8 @@ for (const scenario of structuredScenarios) {
     await page.locator("#query").fill("peace hope");
     await page.locator("#version").selectOption("WEB");
     await page.getByRole("button", { name: scenario.mode === "advanced" ? "All words" : "Advanced", exact: true }).click();
-    await page.locator(".search-options > summary").click();
     await page.getByRole("checkbox", { name: "Match case", exact: true }).setChecked(!scenario.caseSensitive);
-    await page.locator(".search-options > summary").click();
-    await page.getByRole("button", { name: "Choose books: 2 books (2/66)", exact: true }).click();
-    await page.getByRole("button", { name: "John", exact: true }).click();
-    await page.getByRole("button", { name: "Job", exact: true }).click();
-    await page.getByRole("button", { name: "Done", exact: true }).click();
+    await toggleBooks(page, ["John", "Job"]);
     await chip.focus();
     await expect(chip).toBeFocused();
     const requested = page.waitForRequest(request => {
@@ -255,10 +258,7 @@ test("a direct related term on page two preserves completed settings and starts 
   await expect(wise).toBeInViewport();
   await page.locator("#query").fill("peace");
   await page.locator("#version").selectOption("WEB");
-  await page.getByRole("button", { name: "Choose books: 2 books (2/66)", exact: true }).click();
-  await page.getByRole("button", { name: "John", exact: true }).click();
-  await page.getByRole("button", { name: "Job", exact: true }).click();
-  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await toggleBooks(page, ["John", "Job"]);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(wise).toBeInViewport();
   await expect(related.locator("details")).not.toHaveAttribute("open");
@@ -284,10 +284,7 @@ test("a new submitted scope or edition closes the related preview", async ({ pag
   await page.goto("/?q=wisdom&version=KJV&books=19,42");
   const related = page.locator(".related-preview");
   await related.locator("summary").click();
-  await page.getByRole("button", { name: "Choose books: 2 books (2/66)", exact: true }).click();
-  await page.getByRole("button", { name: "John", exact: true }).click();
-  await page.getByRole("button", { name: "Job", exact: true }).click();
-  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await toggleBooks(page, ["John", "Job"]);
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page).toHaveURL(/books=17%2C19/);
   await expect(related).not.toHaveAttribute("open");

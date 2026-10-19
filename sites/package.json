@@ -11,7 +11,7 @@
     "build:legacy-css": "tailwindcss -i ../searchapp/styles/tailwind.css -o ../searchapp/static/searchapp/stylesheets/styles.css --minify",
     "start": "vinext start",
     "test": "npm run build && node --test tests/*.test.mjs",
-    "test:unit": "node --test tests/search-state.test.mjs tests/reference-workflow.test.mjs tests/search-language.test.mjs tests/chapter-reader.test.mjs tests/book-overview.test.mjs tests/bundled-corpus.test.mjs tests/asset-corpus.test.mjs tests/dependency-audit.test.mjs tests/related-words.test.mjs",
+    "test:unit": "node --test tests/search-state.test.mjs tests/reference-workflow.test.mjs tests/search-language.test.mjs tests/chapter-reader.test.mjs tests/book-overview.test.mjs tests/bundled-corpus.test.mjs tests/asset-corpus.test.mjs tests/dependency-audit.test.mjs tests/related-words.test.mjs tests/dictionary.test.mjs",
     "test:browser": "playwright test",
     "test:built": "node --test tests/built-app.mjs tests/bundled-worker.mjs",
     "typecheck": "tsc --noEmit",

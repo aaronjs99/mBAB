@@ -71,7 +71,7 @@ test("share links preserve case matching and the current result page", async ({ 
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Search", exact: true })).toBeEnabled();
-  await page.getByLabel("Search options", { exact: true }).click();
+  await expect(page.getByLabel("Match case")).toBeVisible();
   await page.getByLabel("Match case").check();
   await search(page, "love");
   await page.getByRole("button", { name: "Next", exact: true }).click();
@@ -136,6 +136,7 @@ test("an older response cannot replace a newer example search", async ({ page })
   const firstRequest = page.waitForRequest(request => new URL(request.url()).pathname === "/api/search");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await firstRequest;
+  await page.getByRole("button", { name: "Any word", exact: true }).click();
   await page.getByRole("button", { name: /peace or hope/ }).click();
   await expect(page.locator(".expression code")).toHaveText("peace,hope");
   release();

@@ -19,7 +19,7 @@ test("server-renders the finished mBAB search experience", async () => {
   assert.match(html, /Search the Bible/i);
   assert.match(html, /Words or a verse reference/i);
   assert.match(html, /<details class="search-help"/i);
-  assert.match(html, /<details class="search-options"/i);
+  assert.match(html, /<details class="[^"]*\bsearch-options\b/i);
   assert.match(html, /All words/i);
   assert.match(html, /Berean Standard Bible/i);
   assert.match(html, /American King James Version/i);

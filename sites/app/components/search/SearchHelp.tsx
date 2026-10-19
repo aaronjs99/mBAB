@@ -6,6 +6,7 @@ export function SearchHelp() {
         <h2>Search help</h2>
         <dl><div><dt>John 3:16</dt><dd>A verse</dd></div><div><dt>John 3</dt><dd>A chapter</dd></div><div><dt>love mercy</dt><dd>Words to find</dd></div></dl>
         <p>In Advanced, <code>+</code> means both, <code>,</code> means either. Use parentheses to group words.</p>
+        <p>Dictionary shows word meanings and examples. Use <strong>Aa</strong> to adjust verse text.</p>
         <span><kbd>/</kbd> Search <kbd>Esc</kbd> Close reader</span>
       </div>
     </details>

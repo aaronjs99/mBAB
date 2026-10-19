@@ -1,0 +1,186 @@
+/* Shared controls and the dictionary keep the original mBAB blue identity. */
+:root {
+  --paper: #f4f6fb; --surface: #fff; --surface-strong: #edf1f8;
+  --ink: #1e293b; --muted: #58677c; --line: #dbe2ee; --line-strong: #98aac6;
+  --accent: #1d4ed8; --accent-dark: #1e40af; --sage: #dbeafe; --sage-deep: #1e40af;
+  --gold: #fef3c7;
+}
+:root[data-theme="dark"] {
+  --paper: #111827; --surface: #1f2937; --surface-strong: #293548;
+  --ink: #eef2f9; --muted: #b2bfd0; --line: #39465b; --line-strong: #71819d;
+  --accent: #a5bfff; --accent-dark: #c4d3ff; --sage: #1e3a70; --sage-deep: #dbeafe;
+  --gold: #665830;
+}
+.dictionary-panel { position: fixed; width: min(640px, calc(100% - 32px)); height: min(740px, calc(100dvh - 48px)); max-height: calc(100dvh - 24px); padding: 0; margin: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); overflow: hidden; }
+.dictionary-panel[open] { display: flex; flex-direction: column; }
+.dictionary-panel::backdrop { background: #101d1670; backdrop-filter: blur(3px); }
+.dictionary-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px 12px; }
+.dictionary-header h2 { font-size: 16px; font-weight: 500; margin: 0; }
+.dictionary-close { min-width: 40px; min-height: 40px; border-radius: 6px; color: var(--muted); font-size: 26px; line-height: 1; font-weight: 300; }
+.dictionary-close:hover { background: var(--surface-strong); }
+.dictionary-form { display: flex; gap: 8px; margin: 0 24px 20px; }
+.dictionary-form input { min-width: 0; width: 100%; flex: 1; min-height: 46px; padding: 10px 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 6px; font-size: 16px; }
+.dictionary-form input::placeholder { color: var(--muted); }
+.dictionary-form button { flex: 0 0 auto; min-height: 46px; padding: 10px 16px; border-radius: 6px; background: var(--ink); color: var(--paper); font-size: 13px; font-weight: 500; }
+.dictionary-form button:hover { background: var(--accent); color: var(--surface); }
+.dictionary-body { min-height: 0; flex: 1; overflow: auto; overscroll-behavior: contain; padding: 4px 24px 28px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.dictionary-message { margin: 20px 0; color: var(--muted); font-size: 14px; }
+.dictionary-message[role="status"] { display: flex; align-items: center; gap: 10px; }
+.dictionary-message p { margin: 0 0 6px; }
+.dictionary-error button { min-height: 40px; padding: 4px 0; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.dictionary-empty { padding: 20px 0; }
+.dictionary-empty h3 { margin: 0 0 8px; font-size: 18px; font-weight: 500; }
+.dictionary-empty p { margin: 0; font-size: 14px; color: var(--muted); }
+.dictionary-suggestions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 18px; font-size: 13px; }
+.dictionary-suggestions > span { color: var(--muted); }
+.dictionary-suggestions button { min-height: 40px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--accent); }
+.dictionary-suggestions button:hover { background: var(--sage); border-color: var(--line-strong); }
+.dictionary-entry-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 20px; padding-top: 24px; }
+.dictionary-entry-head h3 { min-width: 0; margin: 0; font: 38px/1.2 var(--display); letter-spacing: -.6px; }
+.dictionary-find { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 0; color: var(--accent); font-size: 12px; }
+.dictionary-find:hover { text-decoration: underline; text-underline-offset: 3px; }
+.dictionary-part { padding-top: 22px; }
+.dictionary-part + .dictionary-part { margin-top: 24px; border-top: 1px solid var(--line); }
+.dictionary-part h4 { margin: 0 0 14px; color: var(--muted); font: italic 15px/1.5 var(--display); }
+.dictionary-part ol { margin: 0; padding-left: 26px; font-size: 16px; line-height: 1.6; }
+.dictionary-part li { padding-left: 5px; }
+.dictionary-part li + li { margin-top: 18px; }
+.dictionary-part li::marker { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.dictionary-definition { margin: 0; }
+.dictionary-example { margin: 5px 0 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.dictionary-credit { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 12px 24px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.dictionary-credit a { min-height: 24px; display: inline-flex; align-items: center; }
+@media (max-width: 480px) {
+  .dictionary-panel { width: calc(100% - 20px); height: calc(100dvh - 28px); border-radius: 10px; }
+  .dictionary-header { padding: 12px 16px 8px; }
+  .dictionary-form { margin: 0 16px 16px; }
+  .dictionary-form button { padding-inline: 12px; }
+  .dictionary-body { padding: 0 16px 24px; }
+  .dictionary-entry-head h3 { font-size: 34px; }
+  .dictionary-credit { padding-inline: 16px; }
+}
+.search-toolbar { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-start; gap: 12px; }
+.search-toolbar .mode-switcher { margin-right: auto; }
+.case-control { min-height: 40px; white-space: nowrap; font-size: 12px; }
+.reading-options > summary { min-width: 40px; padding-inline: 10px; font-family: var(--display); font-size: 17px; }
+.reading-panel { width: 172px; }
+.reading-label { display: block; margin-bottom: 10px; color: var(--muted); font-size: 12px; }
+.verse-size-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.verse-size-controls button { min-width: 40px; min-height: 40px; border: 1px solid var(--line); border-radius: 5px; font-size: 16px; }
+.verse-size-controls button:hover:not(:disabled) { background: var(--sage); }
+.verse-size-controls button > span { padding-left: 2px; font: 12px var(--font-body); }
+.verse-size-controls output { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.scope-toolbar { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 14px 18px; padding: 14px 0 0; }
+.edition-select { display: flex; flex: 1 1 230px; min-width: 0; max-width: 330px; flex-direction: column; gap: 6px; color: var(--muted); font-size: 11px; }
+.edition-select select { display: block; min-width: 0; width: 100%; min-height: 40px; padding: 8px 28px 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font-size: 12px; }
+.quick-scope { display: flex; min-width: 0; padding: 3px; border: 1px solid var(--line); border-radius: 7px; }
+.quick-scope button { min-height: 34px; padding: 6px 10px; border-radius: 4px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.quick-scope button.active { background: var(--sage); color: var(--accent); }
+.scope-toolbar .search-filters { width: auto; margin-left: auto; }
+.filter-toggle { gap: 8px; }
+.filter-scope { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; }
+.book-filter-bar { flex-wrap: wrap; gap: 8px; }
+.book-filter-bar h2 { margin: 0 auto 0 0; color: var(--ink); font-size: 15px; font-weight: 500; }
+.book-filter-bar h2 > span { margin-left: 6px; color: var(--muted); font-size: 11px; font-weight: 400; }
+.book-reset { margin: 0; font-size: 11px; }
+@media (max-width: 640px) {
+  .search-toolbar { gap: 6px 14px; }
+  .search-toolbar .mode-switcher { flex-basis: 100%; }
+  .search-toolbar .reading-options { margin-left: auto; }
+  .scope-toolbar { gap: 10px; }
+  .edition-select { flex-basis: 100%; max-width: none; }
+  .quick-scope { flex: 1 1 auto; justify-content: space-between; }
+  .quick-scope button { padding-inline: 8px; font-size: 11px; }
+  .scope-toolbar .search-filters { flex: 0 1 auto; margin-left: 0; }
+  .filter-toggle { min-height: 42px; padding: 8px; }
+  .filter-scope { display: none; }
+}
+.topbar { width: 100%; min-height: 72px; padding: 0 max(24px, calc((100vw - 1280px) / 2)); margin: 0; border: 0; background: #312e81; color: #fff; }
+.brand strong { font-family: var(--font-body); font-size: 25px; font-weight: 750; letter-spacing: -.8px; }
+.brand-symbol { color: #c7d2fe; }
+.topnav { gap: 8px; }
+.topnav .nav-button { min-height: 44px; font-size: 13px; }
+.topnav .count-badge, .topnav .search-help > summary { color: #dbe4ff; }
+.topnav .nav-button:hover, .topnav .nav-button[aria-expanded="true"], .topnav .icon-button:hover, .topnav .search-help > summary:hover { background: #ffffff18; }
+.help-panel { color: var(--ink); }
+.workspace-main { width: min(1280px, calc(100% - 48px)); display: grid; grid-template-columns: 236px minmax(0, 1fr); column-gap: 28px; align-content: start; align-items: start; padding: 28px 0 48px; }
+.has-results .workspace-main { padding-top: 28px; }
+.workspace-main > * { grid-column: 2; min-width: 0; }
+.workspace-main > .books-rail { grid-column: 1; grid-row: 1 / span 20; position: sticky; top: 20px; }
+.books-rail .book-filter { margin: 0; padding: 16px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); max-height: calc(100dvh - 140px); overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.book-filter-bar { position: sticky; top: -16px; z-index: 2; padding: 0 0 10px; background: var(--surface); }
+.books-rail .book-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.books-rail .book-grid button { min-height: 40px; padding: 8px 4px; font-size: 12px; line-height: 1.3; }
+.books-rail .book-grid button.selected { background: var(--sage); border-color: var(--line); color: var(--sage-deep); }
+.books-rail .group-pills { gap: 5px; }
+.books-rail .group-pills button { min-height: 36px; padding: 6px 8px; font-size: 11px; }
+.books-rail .testament-block h3 { color: var(--ink); font-size: 12px; font-weight: 600; }
+.book-picker-close { display: none; }
+.search-intro, .has-results .search-intro { margin-bottom: 18px; }
+.search-intro h1, .has-results .search-intro h1 { margin: 0; font: 650 28px/1.25 var(--font-body); letter-spacing: -.7px; }
+.search-card { box-shadow: 0 4px 16px #1e3a8a05; border-color: var(--line); padding: 12px 18px 16px; }
+.query-row { min-height: 62px; }
+.search-button { background: #2563eb; color: #fff; min-height: 46px; border-radius: 7px; }
+.search-button:hover:not(:disabled) { background: #1d4ed8; }
+.search-toolbar { margin-top: 12px; }
+.mode-switcher { background: var(--surface-strong); }
+.mode-switcher button { min-height: 40px; }
+.mode-switcher button.active { background: var(--sage); color: var(--sage-deep); box-shadow: none; }
+.scope-toolbar { align-items: flex-end; gap: 12px; }
+.edition-select { flex-basis: 220px; }
+.quick-scope button { min-height: 36px; }
+.example-row { margin-top: 14px; padding-top: 10px; }
+.results-layout { margin-top: 26px; }
+.results-head { padding-bottom: 16px; }
+.results-head h2 { font-family: var(--font-body); font-size: 22px; letter-spacing: -.4px; font-weight: 650; }
+.reading-list { margin-top: 18px; padding: 0 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.reading-list .result-card { padding: 24px 0; }
+.reading-list .result-card:last-child { border-bottom: 0; }
+.result-content blockquote, .reader-verse p, .saved-card > p:not(.result-ref) { font-size: var(--verse-size, 19px); }
+.result-ref { color: var(--accent); }
+.dictionary-form button { background: #2563eb; color: #fff; }
+.dictionary-form-note { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+footer { width: min(1280px, calc(100% - 48px)); }
+@media (max-width: 1100px) and (min-width: 1000px) { .workspace-main { grid-template-columns: 220px minmax(0, 1fr); gap: 20px; } .scope-toolbar .filter-scope { display: none; } }
+@media (max-width: 999px) {
+  .workspace-main { display: flex; flex-direction: column; width: min(850px, calc(100% - 40px)); }
+  .workspace-main > :not(.announcer):not(.toast) { width: 100%; }
+  .workspace-main > .books-rail { display: none; position: static; order: 3; }
+  .workspace-main > .books-rail[data-open="true"] { display: block; margin-top: 14px; }
+  .books-rail .book-filter { max-height: 65dvh; }
+  .books-rail .book-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .book-picker-close { display: inline-block; }
+  .workspace-main .search-intro { order: 1; }
+  .workspace-main .search-card { order: 2; }
+  .workspace-main .search-status, .workspace-main .error-banner { order: 4; }
+  .workspace-main .results-layout { order: 5; }
+}
+@media (max-width: 640px) {
+  .topbar { min-height: 64px; padding-inline: 16px; gap: 10px; }
+  .topnav { gap: 2px; }
+  .topnav .nav-button { padding: 8px 6px; font-size: 12px; }
+  .topnav .icon-button, .topnav .search-help > summary { width: 34px; height: 44px; }
+  .brand strong { font-size: 23px; }
+  .brand-symbol { width: 20px; }
+  .workspace-main, .has-results .workspace-main { padding-top: 24px; }
+  .search-intro h1, .has-results .search-intro h1 { font-size: 25px; }
+  .search-toolbar .mode-switcher { flex-basis: auto; }
+  .case-control { margin-left: auto; }
+  .search-toolbar .reading-options { margin-left: 0; }
+  .scope-toolbar { gap: 10px; }
+  .scope-toolbar .edition-select { flex-basis: 100%; max-width: none; }
+  .reading-list { padding-inline: 16px; }
+  .reading-list .result-card { padding-block: 20px; }
+  .result-content blockquote { font-size: var(--verse-size, 19px); line-height: 1.6; }
+  .results-head h2 { font-size: 20px; }
+  .dictionary-panel::backdrop { background: #0b102480; }
+}
+@media (max-width: 380px) {
+  .brand-symbol { display: none; }
+  .topbar { padding-inline: 12px; }
+  .workspace-main, footer { width: calc(100% - 28px); }
+  .topnav .count-badge { margin-left: 3px; }
+  .search-toolbar { column-gap: 6px; }
+  .mode-switcher button { padding-inline: 7px; font-size: 12px; }
+  .books-rail .book-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

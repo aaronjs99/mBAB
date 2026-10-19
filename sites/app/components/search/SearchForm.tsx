@@ -11,11 +11,13 @@ type Props = {
   onTogglePicker: () => void; onSelectGroup: (ids: readonly number[]) => void;
   onToggleBook: (id: number) => void; onSearch: (event: FormEvent) => void;
   onExample: (example: SearchExample) => void;
+  verseSize?: number; onVerseSizeChange?: (value: number) => void;
 };
 
 export function SearchForm({ query, mode, version, selectedBooks, activeGroup, showBooks,
   caseSensitive, loading, ready, hasResults, examples, onQueryChange, onModeChange,
-  onVersionChange, onCaseChange, onTogglePicker, onSelectGroup, onToggleBook, onSearch, onExample }: Props) {
+  onVersionChange, onCaseChange, onTogglePicker, onSelectGroup, onSearch, onExample,
+  verseSize = 19, onVerseSizeChange }: Props) {
   const scope = selectedBooks.length === BOOKS.length ? "Entire Bible"
     : selectedBooks.length === 1 ? BOOKS[selectedBooks[0]].name : `${selectedBooks.length} books`;
   return (
@@ -27,13 +29,6 @@ export function SearchForm({ query, mode, version, selectedBooks, activeGroup, s
           <input id="query" value={query} onChange={event => onQueryChange(event.target.value)}
             placeholder={mode === "advanced" ? "(faith + works), grace" : "Words or a verse reference"}
             maxLength={120} autoComplete="off" disabled={!ready} aria-describedby="query-help" />
-          <div className="edition-control">
-            <label className="sr-only" htmlFor="version">Edition</label>
-            <span className="edition-short" aria-hidden="true">{VERSIONS.find(item => item.id === version)?.short}</span>
-            <select id="version" value={version} disabled={!ready} title="Bible edition" onChange={event => onVersionChange(event.target.value)}>
-              {VERSIONS.map(item => <option key={item.id} value={item.id}>{item.short} · {item.label}</option>)}
-            </select>
-          </div>
           <button className="search-button" type="submit" disabled={!ready || loading}>
             {loading ? <span className="spinner" aria-label="Searching" /> : <><span>Search</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" /></svg></>}
           </button>
@@ -44,24 +39,38 @@ export function SearchForm({ query, mode, version, selectedBooks, activeGroup, s
             <legend className="sr-only">Search mode</legend>
             {SEARCH_MODES.map(item => <button key={item.id} type="button" className={mode === item.id ? "active" : ""} onClick={() => onModeChange(item.id)} aria-pressed={mode === item.id}>{item.label}</button>)}
           </fieldset>
+          <label className="check-control case-control"><input type="checkbox" disabled={!ready} checked={caseSensitive} onChange={event => onCaseChange(event.target.checked)} /> Match case</label>
+          <details className="search-options reading-options">
+            <summary aria-label="Reading controls"><span aria-hidden="true">Aa</span><span className="sr-only">Reading controls</span></summary>
+            <div className="options-panel reading-panel">
+              <span className="reading-label">Verse text</span>
+              <div className="verse-size-controls">
+                <button type="button" aria-label="Smaller verse text" disabled={!onVerseSizeChange || verseSize <= 16} onClick={() => onVerseSizeChange?.(Math.max(16, verseSize - 2))}>A<span aria-hidden="true">−</span></button>
+                <output aria-label="Verse text size">{verseSize}px</output>
+                <button type="button" aria-label="Larger verse text" disabled={!onVerseSizeChange || verseSize >= 26} onClick={() => onVerseSizeChange?.(Math.min(26, verseSize + 2))}>A<span aria-hidden="true">+</span></button>
+              </div>
+            </div>
+          </details>
+        </div>
+        <div className="scope-toolbar">
+          <label className="edition-select" htmlFor="version"><span>Edition</span>
+            <select id="version" value={version} disabled={!ready} title="Bible edition" onChange={event => onVersionChange(event.target.value)}>
+              {VERSIONS.map(item => <option key={item.id} value={item.id}>{item.short} · {item.label}</option>)}
+            </select>
+          </label>
+          <div className="quick-scope" role="group" aria-label="Search scope">
+            {(["old", "all", "new"] as const).map(id => {
+              const group = BOOK_GROUPS.find(item => item.id === id)!;
+              return <button key={id} type="button" disabled={!ready} className={activeGroup === id ? "active" : ""} aria-pressed={activeGroup === id} aria-label={id === "all" ? "Entire Bible" : group.label} onClick={() => onSelectGroup(group.ids)}>{id === "old" ? "OT" : id === "new" ? "NT" : "Entire Bible"}</button>;
+            })}
+          </div>
           <div className="search-filters">
-            <button className="filter-toggle" type="button" disabled={!ready} onClick={onTogglePicker} aria-expanded={showBooks} aria-controls="book-picker" aria-label={`Choose books: ${scope} (${selectedBooks.length}/${BOOKS.length})`}>
-              {scope}<span className="sr-only"> {selectedBooks.length}/{BOOKS.length}</span><span className="chevron" aria-hidden="true" />
+            <button id="books-toggle" className="filter-toggle" type="button" disabled={!ready} onClick={onTogglePicker} aria-expanded={showBooks} aria-controls="book-picker" aria-label={`Choose books: ${scope} (${selectedBooks.length}/${BOOKS.length})`}>
+              <span>Books</span><span className="filter-scope">{scope}</span><span className="sr-only"> {selectedBooks.length}/{BOOKS.length}</span><span className="chevron" aria-hidden="true" />
             </button>
-            <details className="search-options">
-              <summary aria-label="Search options">Options{caseSensitive && <span className="case-indicator" aria-hidden="true">Aa</span>}</summary>
-              <div className="options-panel"><label className="check-control"><input type="checkbox" disabled={!ready} checked={caseSensitive} onChange={event => onCaseChange(event.target.checked)} /> Match case</label></div>
-            </details>
           </div>
         </div>
         {mode === "advanced" && <p className="advanced-hint"><code>+</code> both <span>·</span> <code>,</code> either <span>·</span> <code>( )</code> group</p>}
-        {showBooks && <div className="book-filter" id="book-picker">
-          <div className="book-filter-bar"><span>{selectedBooks.length} selected</span><button className="text-button" type="button" onClick={onTogglePicker}>Done</button></div>
-          <div className="group-pills" aria-label="Book collections">{BOOK_GROUPS.map(group => <button key={group.id} type="button" disabled={!ready} className={activeGroup === group.id ? "active" : ""} onClick={() => onSelectGroup(group.ids)} aria-pressed={activeGroup === group.id}>{group.label}</button>)}</div>
-          {(["Old Testament", "New Testament"] as const).map(testament => <div className="testament-block" key={testament}>
-            <h3>{testament}</h3><div className="book-grid">{BOOKS.filter(book => book.testament === testament).map(book => <button key={book.id} type="button" disabled={!ready} className={selectedBooks.includes(book.id) ? "selected" : ""} onClick={() => onToggleBook(book.id)} aria-pressed={selectedBooks.includes(book.id)} aria-label={book.name}>{book.name}</button>)}</div>
-          </div>)}
-        </div>}
       </form>
       {!hasResults && <div className="example-row"><span>Try</span>{examples.map(example => <button key={example.label} type="button" disabled={!ready} onClick={() => onExample(example)}>{example.label}</button>)}</div>}
     </section>

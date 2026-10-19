@@ -2,3 +2,7 @@
 app/search/data/wordnet-related.json text eol=lf
 app/search/data/README.md text eol=lf
 public/WORDNET-LICENSE.txt -text -whitespace
+scripts/build-dictionary.py text eol=lf
+app/search/data/dictionary/** text eol=lf
+public/dictionary/*.json text eol=lf
+public/dictionary/LICENSE.txt -text -whitespace

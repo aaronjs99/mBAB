@@ -1,26 +1,37 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { BOOK_GROUPS, VERSIONS } from "@/app/search/catalog";
 import { applyTheme, readInitialBrowserState, storeSavedVerses } from "@/app/search/browser-storage";
-import { searchParamsFor } from "@/app/search/search-location";
+import { DEFAULT_SEARCH, searchParamsFor } from "@/app/search/search-location";
 import { useSearchSession } from "@/app/search/use-search-session";
 import { useChapterReader } from "@/app/search/use-chapter-reader";
-import type { SearchExample, SearchResponse, SearchResult } from "@/app/search/types";
+import type { SearchExample, SearchMode, SearchResponse, SearchResult } from "@/app/search/types";
 import { SearchHelp } from "./SearchHelp";
 import { ChapterReader } from "./ChapterReader";
 import { SavedTray } from "./SavedTray";
 import { SearchForm } from "./SearchForm";
 import { SearchResults } from "./SearchResults";
+import { DictionaryPanel } from "./DictionaryPanel";
+import { BookPicker } from "./BookPicker";
 
-const EXAMPLES: SearchExample[] = [
-  { query: "John 3:16", mode: "all", label: "John 3:16" },
-  { query: "love mercy", mode: "all", label: "love + mercy" },
-  { query: "peace hope", mode: "any", label: "peace or hope" },
-];
+const EXAMPLES: Record<SearchMode, SearchExample[]> = {
+  all: [
+    { query: "John 3:16", mode: "all", label: "John 3:16" },
+    { query: "love mercy", mode: "all", label: "love + mercy" },
+  ],
+  any: [
+    { query: "peace hope", mode: "any", label: "peace or hope" },
+    { query: "wisdom wise", mode: "any", label: "wisdom or wise" },
+  ],
+  advanced: [
+    { query: "(faith + works), grace", mode: "advanced", label: "(faith + works), grace" },
+    { query: "love + (mercy, kindness)", mode: "advanced", label: "love + (mercy, kindness)" },
+  ],
+};
 
 function sameIds(left: number[], right: readonly number[]) {
   return left.length === right.length && left.every((id, index) => id === right[index]);
@@ -33,6 +44,9 @@ export function SearchStudio() {
   const loading = pending !== null;
   const error = failure?.message ?? "";
   const [showBooks, setShowBooks] = useState(false);
+  const [desktopBooks, setDesktopBooks] = useState(false);
+  const [dictionaryOpen, setDictionaryOpen] = useState(false);
+  const [verseSize, setVerseSize] = useState(19);
   const [saved, setSaved] = useState<SearchResult[]>([]);
   const [savedOpen, setSavedOpen] = useState(false);
   const [dark, setDark] = useState(false);
@@ -44,6 +58,27 @@ export function SearchStudio() {
     [selectedBooks],
   );
   const selectedVersion = VERSIONS.find((item) => item.id === completed?.settings.version) ?? VERSIONS[0];
+
+  useEffect(() => {
+    const desktop = matchMedia("(min-width: 1000px)");
+    const update = () => setDesktopBooks(desktop.matches);
+    queueMicrotask(update);
+    desktop.addEventListener("change", update);
+    try {
+      const stored = Number(localStorage.getItem("mbab:verse-size"));
+      if (Number.isFinite(stored) && stored >= 16 && stored <= 26) queueMicrotask(() => setVerseSize(stored));
+    } catch { /* Reading remains adjustable without browser storage. */ }
+    return () => desktop.removeEventListener("change", update);
+  }, []);
+
+  function changeVerseSize(value: number) {
+    setVerseSize(value);
+    try { localStorage.setItem("mbab:verse-size", String(value)); } catch { /* Keep the current tab usable. */ }
+  }
+
+  function resetFilters() {
+    setDraft(current => ({ ...current, version: DEFAULT_SEARCH.version, bookIds: [...DEFAULT_SEARCH.bookIds], mode: "all", caseSensitive: false, page: 1 }));
+  }
 
   useEffect(() => {
     const initial = readInitialBrowserState();
@@ -149,7 +184,7 @@ export function SearchStudio() {
   }
 
   return (
-    <div className={`site-shell${completed ? " has-results" : ""}`}>
+    <div className={`site-shell${completed ? " has-results" : ""}`} style={{ "--verse-size": `${verseSize}px` } as CSSProperties}>
       <a className="skip-link" href="#main-content">Skip to search</a>
       <header className="topbar">
         <Link className="brand" href="/" aria-label="mBAB home">
@@ -157,15 +192,18 @@ export function SearchStudio() {
           <strong>mBAB</strong>
         </Link>
         <nav className="topnav" aria-label="Primary navigation">
+          <button className="nav-button" type="button" disabled={!ready} onClick={() => setDictionaryOpen(true)} aria-haspopup="dialog">Dictionary</button>
           <SearchHelp />
-          <button className="nav-button" type="button" onClick={() => setSavedOpen((value) => !value)} aria-expanded={savedOpen}>
+          <button className="nav-button" type="button" disabled={!ready} onClick={() => setSavedOpen((value) => !value)} aria-expanded={savedOpen}>
             Saved <span className="count-badge">{saved.length}</span>
           </button>
-          <button className="icon-button" type="button" onClick={toggleTheme} aria-label={`Use ${dark ? "light" : "dark"} theme`}>
+          <button className="icon-button" type="button" disabled={!ready} onClick={toggleTheme} aria-label={`Use ${dark ? "light" : "dark"} theme`}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">{dark ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> : <path d="M20 15A8 8 0 0 1 9 4a8.5 8.5 0 1 0 11 11Z" />}</svg>
           </button>
         </nav>
       </header>
+
+      {dictionaryOpen && <DictionaryPanel initialWord={query} onClose={() => setDictionaryOpen(false)} onSearchWord={word => performSearch({ query: word, mode: "all", label: word })} />}
 
       {savedOpen && <SavedTray items={saved} onClose={() => setSavedOpen(false)} onRemove={toggleSaved} onRead={result => reader.open({ result, query: "", caseSensitive: false })} />}
       {reader.selection && <ChapterReader
@@ -174,7 +212,7 @@ export function SearchStudio() {
         onCompare={reader.setComparisonVersion} onExpand={reader.setExpanded} onClose={reader.close}
       />}
 
-      <main id="main-content">
+      <main id="main-content" className="workspace-main">
         <section className="search-intro">
           <h1 id="search-heading">Search the Bible</h1>
         </section>
@@ -185,22 +223,33 @@ export function SearchStudio() {
           version={version}
           selectedBooks={selectedBooks}
           activeGroup={activeGroup}
-          showBooks={showBooks}
+          showBooks={desktopBooks || showBooks}
           caseSensitive={caseSensitive}
           loading={loading}
           ready={ready}
-          examples={EXAMPLES}
+          examples={EXAMPLES[mode]}
           hasResults={completed !== null}
           onQueryChange={(value) => setDraft((current) => ({ ...current, query: value }))}
           onModeChange={(value) => setDraft((current) => ({ ...current, mode: value }))}
           onVersionChange={(value) => setDraft((current) => ({ ...current, version: value }))}
           onCaseChange={(value) => setDraft((current) => ({ ...current, caseSensitive: value }))}
-          onTogglePicker={() => setShowBooks((value) => !value)}
+          onTogglePicker={() => {
+            if (desktopBooks) document.getElementById("book-picker")?.focus({ preventScroll: true });
+            else setShowBooks(value => !value);
+          }}
           onSelectGroup={(ids) => setDraft((current) => ({ ...current, bookIds: [...ids].sort((left, right) => left - right) }))}
           onToggleBook={toggleBook}
           onSearch={submit}
           onExample={performSearch}
+          verseSize={verseSize} onVerseSizeChange={changeVerseSize}
         />
+
+        <aside id="book-picker" className="books-rail" data-open={showBooks} tabIndex={-1} aria-label="Book selection"
+          onKeyDown={event => { if (event.key === "Escape" && !desktopBooks) { setShowBooks(false); document.getElementById("books-toggle")?.focus(); } }}>
+          <BookPicker selectedBooks={selectedBooks} activeGroup={activeGroup} ready={ready}
+            onSelectGroup={ids => setDraft(current => ({ ...current, bookIds: [...ids].sort((a, b) => a - b) }))}
+            onToggleBook={toggleBook} onClose={() => { setShowBooks(false); document.getElementById("books-toggle")?.focus(); }} onReset={resetFilters} />
+        </aside>
 
         <div className="announcer" aria-live="polite">{notice || status || (pending ? "Searching Scripture." : completed ? `${completed.response.total} ${completed.response.total === 1 ? "verse" : "verses"} found` : "")}</div>
         {pending && (
