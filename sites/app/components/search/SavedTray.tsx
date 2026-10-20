@@ -1,4 +1,5 @@
 import type { SearchResult } from "@/app/search/types";
+import { VerseText } from "./VerseText";
 
 type Props = {
   items: SearchResult[];
@@ -19,7 +20,7 @@ export function SavedTray({ items, onClose, onRemove, onRead }: Props) {
           {items.map((item) => (
             <article key={`${item.version}:${item.ref}`} className="saved-card">
               <p className="result-ref">{item.ref} <span>{item.version}</span></p>
-              <p>{item.text}</p>
+              <p><VerseText text={item.text} /></p>
               <div className="saved-tools"><button className="text-button" type="button" onClick={() => onRead(item)}>Read in context</button><button className="text-button danger" type="button" onClick={() => onRemove(item)}>Remove</button></div>
             </article>
           ))}

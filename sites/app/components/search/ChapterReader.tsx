@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { VERSIONS } from "@/app/search/catalog";
 import type { ChapterState, ReaderSelection } from "@/app/search/use-chapter-reader";
-import { HighlightedText } from "./HighlightedText";
+import { VerseText } from "./VerseText";
 
 type Props = {
   selection: ReaderSelection;
@@ -55,8 +55,8 @@ export function ChapterReader({ selection, chapter, comparison, comparisonVersio
       onCancel={event => { event.preventDefault(); onClose(); }}
       onKeyDown={event => {
         if (event.key !== "Tab") return;
-        const controls = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not([disabled]), select:not([disabled]), [tabindex='0']")]
-          .filter(element => element.getClientRects().length > 0);
+        const controls = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not([disabled]), select:not([disabled]), a[href], [tabindex='0']")]
+          .filter(element => element.tabIndex >= 0 && element.getClientRects().length > 0);
         const boundary = event.shiftKey ? controls[0] : controls.at(-1);
         if (document.activeElement === boundary) {
           event.preventDefault();
@@ -102,10 +102,10 @@ export function ChapterReader({ selection, chapter, comparison, comparisonVersio
             <article className={`reader-verse${verse === result.verse ? " current" : ""}`} key={verse} data-verse={verse} aria-current={verse === result.verse ? "location" : undefined}>
               <div className="reader-verse-number"><span>{verse}</span></div>
               <p className="reader-primary"><span className="reader-edition">{result.version}</span>{primary.has(verse)
-                ? <HighlightedText text={primary.get(verse)!} query={query} caseSensitive={caseSensitive} />
+                ? <VerseText text={primary.get(verse)!} query={query} caseSensitive={caseSensitive} />
                 : <em>This verse is not present in this edition.</em>}</p>
               {comparisonVersion && <p className="reader-secondary"><span className="reader-edition">{comparisonVersion}</span>{comparison.data
-                ? secondary.get(verse) ?? <em>This verse is not present in this edition.</em>
+                ? secondary.has(verse) ? <VerseText text={secondary.get(verse)!} /> : <em>This verse is not present in this edition.</em>
                 : <span className="reader-pending">{comparison.loading ? "Loading…" : "Comparison unavailable."}</span>}</p>}
             </article>
           ))}

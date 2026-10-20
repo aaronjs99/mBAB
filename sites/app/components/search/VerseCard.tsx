@@ -1,5 +1,5 @@
 import type { SearchResult } from "@/app/search/types";
-import { HighlightedText } from "./HighlightedText";
+import { VerseText } from "./VerseText";
 
 type Props = {
   result: SearchResult;
@@ -16,7 +16,7 @@ export function VerseCard({ result, query, caseSensitive, isSaved, onRead, onCop
     <article className="result-card">
       <div className="result-content">
         <p className="result-ref">{result.ref} <span>{result.version}</span></p>
-        <blockquote><HighlightedText text={result.text} query={query} caseSensitive={caseSensitive} /></blockquote>
+        <blockquote><VerseText text={result.text} query={query} caseSensitive={caseSensitive} /></blockquote>
         <div className="result-tools">
           <button type="button" aria-label="Read in context" onClick={onRead}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1m0-15c3-2 6-2 9-1v15c-3-1-6-1-9 1V5Z" /></svg>Read

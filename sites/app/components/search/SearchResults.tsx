@@ -56,6 +56,8 @@ export function SearchResults({ response, query, mode, caseSensitive, draftChang
           </div>
         </div>
 
+        {response.results.length > 0 && <p className="word-meaning-hint">Tap a word for its meaning.</p>}
+
         {(suggestions.length > 0 || related) && <section className="related-words" aria-labelledby="related-words-heading">
           <h3 className="related-words-heading" id="related-words-heading">Related words</h3>
           {suggestions.length > 0 && <div className="related-terms">

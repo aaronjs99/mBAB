@@ -38,7 +38,10 @@ test("keyboard focus stays inside the reader and Escape restores its trigger", a
   const dialog = await openReader(page);
   await expect(dialog.locator(".reader-verse.current")).toBeVisible();
   await page.keyboard.press("Shift+Tab");
-  await expect(dialog.getByLabel("Chapter verses")).toBeFocused();
+  expect(await dialog.evaluate(element => element.contains(document.activeElement)
+    && document.activeElement instanceof HTMLElement && document.activeElement.tabIndex >= 0)).toBe(true);
+  await page.keyboard.press("Tab");
+  await expect(dialog.getByRole("button", { name: "Close reader", exact: true })).toBeFocused();
   for (let index = 0; index < 9; index += 1) {
     await page.keyboard.press("Tab");
     expect(await dialog.evaluate(element => ({ inside: element.contains(document.activeElement), focused: document.activeElement?.tagName }))).toMatchObject({ inside: true });
